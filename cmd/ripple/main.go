@@ -10,10 +10,12 @@ import (
 
 func main() {
 	verbose := flag.Bool("v", false, "Print generated LLVM IR instead of running")
+	// NEW: Flag for the output binary path
+	outputFile := flag.String("o", "", "Compile to a binary file at the specified path")
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "Usage: ripple [-v] <file.ripple>")
+		fmt.Fprintln(os.Stderr, "Usage: ripple [-v] [-o output] <file.ripple>")
 		os.Exit(1)
 	}
 
@@ -30,6 +32,16 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Print(ir)
+		return
+	}
+
+	// NEW: Handle the output flag
+	if *outputFile != "" {
+		err := runner.Build(string(content), *outputFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		return
 	}
 

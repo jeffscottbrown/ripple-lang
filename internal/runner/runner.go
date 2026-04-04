@@ -71,3 +71,34 @@ func clangArgs(irFile, binFile string) []string {
 	}
 	return append(args, irFile, "-o", binFile)
 }
+
+// Build parses source, generates IR, and uses clang to create an executable at destPath.
+func Build(source string, destPath string) error {
+	ir, err := Compile(source)
+	if err != nil {
+		return err
+	}
+
+	// Create a temporary directory for the intermediate .ll file
+	tmpDir, err := os.MkdirTemp("", "ripple-build-*")
+	if err != nil {
+		return fmt.Errorf("temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	irFile := filepath.Join(tmpDir, "out.ll")
+	if err := os.WriteFile(irFile, []byte(ir), 0644); err != nil {
+		return fmt.Errorf("write IR: %w", err)
+	}
+
+	// Run clang to produce the binary at the requested destination
+	clangCmd := exec.Command("clang", clangArgs(irFile, destPath)...)
+	var clangStderr bytes.Buffer
+	clangCmd.Stderr = &clangStderr
+
+	if err := clangCmd.Run(); err != nil {
+		return fmt.Errorf("compile: %w\n%s", err, clangStderr.String())
+	}
+
+	return nil
+}

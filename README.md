@@ -33,8 +33,9 @@ make test
 Or run any `.ripple` file directly:
 
 ```sh
-./ripple-lang demo.ripple       # compile and run
-./ripple-lang -v demo.ripple    # print LLVM IR instead of running
+./ripple-lang demo.ripple           # compile and run
+./ripple-lang -v demo.ripple        # print LLVM IR instead of running
+./ripple-lang -o myapp demo.ripple  # compile to a standalone binary named 'myapp'
 ```
 
 ---
