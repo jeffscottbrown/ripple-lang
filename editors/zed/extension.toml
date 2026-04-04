@@ -1,0 +1,11 @@
+id = "ripple"
+name = "Ripple"
+version = "0.1.0"
+schema_version = 1
+description = "Ripple language support for Zed: syntax highlighting, bracket matching, and auto-indent for .ripple files."
+authors = ["Ripple Language Contributors"]
+repository = "https://github.com/jeffscottbrown/ripple-lang"
+
+[grammars.ripple]
+repository = "https://github.com/jeffscottbrown/ripple-lang"
+commit = "f5bfa73ba25489f5f3d0a864625a3411fc812fbd"

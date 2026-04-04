@@ -1,0 +1,22 @@
+name = "Ripple"
+grammar = "ripple"
+path_suffixes = ["ripple"]
+line_comment = ""
+
+[[brackets]]
+start = "["
+end = "]"
+close = true
+newline = false
+
+[[brackets]]
+start = "{"
+end = "}"
+close = true
+newline = true
+
+[[brackets]]
+start = "\""
+end = "\""
+close = true
+newline = false

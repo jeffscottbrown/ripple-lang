@@ -1,0 +1,58 @@
+["circle of friends"]
+jerry: "Jerry Garcia"
+janis: "Janis Joplin"
+grace: "Grace Slick"
+
+["albums"]
+jerry: {
+	"Cats Under The Stars"
+	"Blues For Allah"
+	"Terrapin Station"
+}
+janis: {
+	"Big Brother And The Holding Company"
+	"Cheap Thrills"
+}
+grace: {
+	"Surrealistic Pillow"
+}
+
+["jam"]
+suppose jerry.albumcount louder_than janis.albumcount
+    say jerry.name " has more albums than " janis.name
+otherwise
+    say jerry.name " does not have more albums than " janis.name
+enough
+
+suppose janis.albums has "Surrealistic Pillow"
+    say janis.name " made the pillow"
+otherwise
+    say janis.name " did not make the pillow"
+enough
+
+jerry_has_more becomes jerry.albumcount louder_than grace.albumcount
+
+suppose jerry_has_more vibes_like copacetic
+    say jerry.name " has more albums than " grace.name
+enough
+
+suppose jerry_has_more vibes_like harsh
+    say jerry.name " had fewer albums than " grace.name
+enough
+
+grace_has_more becomes grace.albumcount louder_than janis.albumcount
+
+suppose grace_has_more vibes_like copacetic
+    say grace.name " has more albums than " janis.name
+otherwise
+    say grace.name " had fewer albums than " janis.name
+enough
+
+jerry_not_smallest becomes jerry.albumcount harshing_the_vibe_of grace.albumcount
+janis_copacetic becomes copacetic
+
+suppose jerry_not_smallest and janis_copacetic
+    say "Jerry has more than Grace and Janis is copacetic"
+otherwise
+    say "Conditions not met"
+enough

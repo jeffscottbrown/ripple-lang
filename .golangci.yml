@@ -1,0 +1,35 @@
+version: "2"
+linters:
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - dupl
+    - dupword
+    - errcheck
+    - exhaustruct
+    - forbidigo
+    - funlen
+    - gochecknoglobals
+    - gosec
+    - govet
+    - lll
+    - mnd
+    - modernize
+    - nlreturn
+    - noctx
+    - noinlineerr
+    - nonamedreturns
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - revive
+    - tagalign
+    - testifylint
+    - varnamelen
+    - wrapcheck
+    - wsl
+    - wsl_v5
+run:
+  timeout: 3m
+  tests: true
