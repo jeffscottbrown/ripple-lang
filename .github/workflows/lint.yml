@@ -1,16 +1,19 @@
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version-file: "go.mod"
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          # Optional: specify version to avoid "v2 vs v1" conflicts
-          version: latest
+          version: v2.11.4
+          args: --timeout=4m
