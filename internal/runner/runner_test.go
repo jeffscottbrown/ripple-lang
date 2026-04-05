@@ -595,10 +595,14 @@ a becomes harsh
 b becomes copacetic
 suppose a and b
     say "should not print" # nothing to see here
+otherwise
+    # this is before
+    say "should print" # also, nothing to see here
+    #this is after
 enough
 `
 	var out bytes.Buffer
 	err := runner.Execute(src, &out)
 	require.NoError(t, err)
-	assert.Equal(t, "", out.String())
+	assert.Equal(t, "should print\n", out.String())
 }
