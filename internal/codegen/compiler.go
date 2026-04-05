@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/alecthomas/participle/v2"
@@ -345,10 +346,8 @@ func (c *Compiler) emitExpr(expr *ast.Expression) string {
 		}
 		if expr.Right != nil && expr.Right.Str != nil {
 			want := *expr.Right.Str
-			for _, have := range c.albums[artistName] {
-				if have == want {
-					return "1"
-				}
+			if slices.Contains(c.albums[artistName], want) {
+				return "1"
 			}
 		}
 		return "0"
