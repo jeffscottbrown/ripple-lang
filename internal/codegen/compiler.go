@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/alecthomas/participle/v2"
 	"github.com/jeffscottbrown/ripple-lang/internal/ast"
 )
 
@@ -18,9 +19,9 @@ type typedVal struct {
 // Compiler translates a Ripple AST into LLVM IR text.
 type Compiler struct {
 	globals bytes.Buffer        // global string constant declarations
-	fn      bytes.Buffer        // main() body – all basic blocks written in order
+	fn      bytes.Buffer        // main() body
 	strs    map[string]string   // interned string literals → global variable name
-	vars    map[string]bool     // variables that have already been alloca'd
+	vars    map[string]bool     // variables tracking (used for alloca and validation)
 	names   map[string]string   // populated from "circle of friends" section
 	albums  map[string][]string // populated from "albums" section
 	strIdx  int                 // next index for naming .str globals
@@ -35,7 +36,7 @@ func NewCompiler() *Compiler {
 
 // Compile translates prog into an LLVM IR module and returns the module as a
 // string.  The compiler may be reused; all state is reset on each call.
-func (c *Compiler) Compile(prog *ast.Program) string {
+func (c *Compiler) Compile(prog *ast.Program) (string, error) {
 	c.globals.Reset()
 	c.fn.Reset()
 	c.strs = make(map[string]string)
@@ -46,12 +47,16 @@ func (c *Compiler) Compile(prog *ast.Program) string {
 	c.condIdx = 0
 	c.tmpIdx = 0
 
-	// Pre-pass: populate names and albums from their respective sections before
+	// PHASE 1: Pre-pass: populate names and albums from their respective sections before
 	// any code is emitted, so that jam-block statements can reference them.
 	for _, sec := range prog.Sections {
 		switch sec.Name {
 		case "circle of friends":
 			for _, e := range sec.Entries {
+				// Semantic Check: Circle of friends MUST be strings, not collections
+				if len(e.Collection) > 0 {
+					return "", participle.Errorf(e.Pos, "artist '%s' in 'circle of friends' cannot be a collection", e.Key)
+				}
 				c.names[e.Key] = e.Value
 			}
 		case "albums":
@@ -61,8 +66,17 @@ func (c *Compiler) Compile(prog *ast.Program) string {
 		}
 	}
 
-	// Emit all jam-section statements into the function body.  String globals
-	// are collected into c.globals as they are encountered.
+	// PHASE 2: Semantic Analysis (The "Dry Run")
+	// This populates c.vars and checks for undefined variables/invalid properties.
+	if err := c.Validate(prog); err != nil {
+		return "", err
+	}
+
+	// PHASE 3: Reset state for Emission
+	// We clear vars so emitAssignment knows to create 'alloca' instructions.
+	c.vars = make(map[string]bool)
+
+	// PHASE 4: Code Generation
 	c.fn.WriteString("entry:\n")
 	for _, sec := range prog.Sections {
 		if sec.Name == "jam" {
@@ -85,7 +99,88 @@ func (c *Compiler) Compile(prog *ast.Program) string {
 	out.WriteString("define i32 @main() {\n")
 	out.WriteString(c.fn.String())
 	out.WriteString("}\n")
-	return out.String()
+	return out.String(), nil
+}
+
+// ── Semantic Validation ──────────────────────────────────────────────────────
+
+func (c *Compiler) Validate(prog *ast.Program) error {
+	for _, sec := range prog.Sections {
+		if sec.Name == "jam" {
+			if err := c.validateStatements(sec.Statements); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) validateStatements(stmts []*ast.Statement) error {
+	for _, s := range stmts {
+		if err := c.validateStatement(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) validateStatement(s *ast.Statement) error {
+	switch {
+	case s.Assignment != nil:
+		if err := c.validateExpression(s.Assignment.Value); err != nil {
+			return err
+		}
+		// Record definition for top-to-bottom checking
+		c.vars[s.Assignment.Target] = true
+		return nil
+
+	case s.Conditional != nil:
+		if err := c.validateExpression(s.Conditional.Condition); err != nil {
+			return err
+		}
+		if err := c.validateStatements(s.Conditional.Body); err != nil {
+			return err
+		}
+		return c.validateStatements(s.Conditional.Otherwise)
+
+	case s.Print != nil:
+		for _, arg := range s.Print.Args {
+			if err := c.validateExpression(arg); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) validateExpression(expr *ast.Expression) error {
+	if err := c.validateTerm(expr.Left); err != nil {
+		return err
+	}
+	if expr.Right != nil {
+		if err := c.validateTerm(expr.Right); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) validateTerm(t *ast.Term) error {
+	switch {
+	case t.Attr != nil:
+		// ... existing attr validation ...
+		return c.validateAttr(t.Attr)
+
+	case t.Ident != nil:
+		name := *t.Ident
+		_, isVariable := c.vars[name]
+		_, isArtist := c.names[name] // Check the global section too!
+
+		if !isVariable && !isArtist {
+			return participle.Errorf(t.Pos, "variable or artist '%s' is not defined", name)
+		}
+	}
+	return nil
 }
 
 // ── Statement emission ────────────────────────────────────────────────────────
@@ -135,18 +230,14 @@ func (c *Compiler) emitPrint(p *ast.Print) {
 	// Intern the format string and obtain a pointer to it.
 	fmtName, fmtSize := c.internString(fmtStr)
 	fmtTmp := c.nextTmp()
-	fmt.Fprintf(&c.fn,
-		"  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
+	fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 		fmtTmp, fmtSize, fmtSize, fmtName)
 
-	// Emit the printf call.
-	var call strings.Builder
-	fmt.Fprintf(&call, "  call i32 (i8*, ...) @printf(i8* %%%s", fmtTmp)
+	fmt.Fprintf(&c.fn, "  call i32 (i8*, ...) @printf(i8* %%%s", fmtTmp)
 	for _, a := range args {
-		fmt.Fprintf(&call, ", %s %s", a.t, a.v)
+		fmt.Fprintf(&c.fn, ", %s %s", a.t, a.v)
 	}
-	call.WriteString(")\n")
-	c.fn.WriteString(call.String())
+	c.fn.WriteString(")\n")
 }
 
 // emitAssignment handles `target becomes expr`.
@@ -257,6 +348,7 @@ func (c *Compiler) emitExpr(expr *ast.Expression) string {
 		// Unknown operator – conservatively return false.
 		return "0"
 	}
+
 	return "%" + result
 }
 
@@ -272,8 +364,7 @@ func (c *Compiler) emitAttr(attr *ast.Attr) typedVal {
 		s := c.names[attr.Name]
 		name, size := c.internString(s)
 		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn,
-			"  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
+		fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 			tmp, size, size, name)
 		return typedVal{"%" + tmp, "i8*"}
 
@@ -304,8 +395,7 @@ func (c *Compiler) emitTerm(t *ast.Term) typedVal {
 	case t.Str != nil:
 		name, size := c.internString(*t.Str)
 		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn,
-			"  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
+		fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 			tmp, size, size, name)
 		return typedVal{"%" + tmp, "i8*"}
 
@@ -329,8 +419,7 @@ func (c *Compiler) internString(s string) (name string, size int) {
 	name = fmt.Sprintf(".str.%d", c.strIdx)
 	c.strIdx++
 	c.strs[s] = name
-	fmt.Fprintf(&c.globals,
-		"@%s = private unnamed_addr constant [%d x i8] c\"%s\\00\", align 1\n",
+	fmt.Fprintf(&c.globals, "@%s = private unnamed_addr constant [%d x i8] c\"%s\\00\", align 1\n",
 		name, size, llvmEscapeString(s))
 	return name, size
 }
@@ -348,17 +437,17 @@ func (c *Compiler) nextTmp() string {
 func targetTriple() string {
 	switch runtime.GOOS {
 	case "darwin":
-		switch runtime.GOARCH {
-		case "amd64":
+		if runtime.GOARCH == "amd64" {
 			return "x86_64-apple-darwin"
-		case "arm64":
+		}
+		if runtime.GOARCH == "arm64" {
 			return "arm64-apple-darwin"
 		}
 	case "linux":
-		switch runtime.GOARCH {
-		case "amd64":
+		if runtime.GOARCH == "amd64" {
 			return "x86_64-pc-linux-gnu"
-		case "arm64":
+		}
+		if runtime.GOARCH == "arm64" {
 			return "aarch64-linux-gnu"
 		}
 	}
@@ -387,4 +476,17 @@ func llvmEscapeString(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func (c *Compiler) validateAttr(attr *ast.Attr) error {
+	if _, exists := c.names[attr.Name]; !exists {
+		return participle.Errorf(attr.Pos, "artist '%s' is not in your circle of friends", attr.Name)
+	}
+
+	switch attr.Prop {
+	case "name", "albumcount", "albums": // "albums" must be valid
+		return nil
+	default:
+		return participle.Errorf(attr.Pos, "artist '%s' does not have a property named '%s'", attr.Name, attr.Prop)
+	}
 }

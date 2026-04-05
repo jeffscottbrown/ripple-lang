@@ -19,7 +19,7 @@ func Compile(source string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse: %w", err)
 	}
-	return codegen.NewCompiler().Compile(prog), nil
+	return codegen.NewCompiler().Compile(prog)
 }
 
 // Execute parses source as a Ripple program, compiles it to a native binary

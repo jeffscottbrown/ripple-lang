@@ -11,32 +11,35 @@ var ripleLexer = lexer.MustStateful(lexer.Rules{
 		{Name: "Punct", Pattern: `[[\]{}.:]`},
 		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
-		{Name: "Whitespace", Pattern: `[\t\n\r ]+`},
+		{Name: "Newline", Pattern: `\r?\n`},     // Capture Newlines
+		{Name: "Whitespace", Pattern: `[ \t]+`}, // Only tabs and spaces
 	},
 })
 
 type Program struct {
-	Sections []*Section `@@*`
+	Sections []*Section `Newline* @@* Newline*` // Allow wrapping newlines
 }
 
 type Section struct {
-	Name       string       `"[" @String "]"`
-	Entries    []*Entry     `@@*`
-	Statements []*Statement `@@*`
+	Name       string       `"[" @String "]" Newline*`
+	Entries    []*Entry     `( @@ Newline* )*` // Allow newlines between entries
+	Statements []*Statement `( @@ Newline* )*`
 }
 
 type Entry struct {
-	Key        string   `@Ident ":"`
-	Value      string   ` ( @String `
-	Collection []string ` | "{" @String* "}" ) `
+	Pos   lexer.Position
+	Key   string `@Ident ":"`
+	Value string ` ( @String `
+	// Use Newline* to allow albums to be listed on multiple lines
+	Collection []string ` | "{" Newline* @String* (Newline* @String)* Newline* "}" ) `
 }
 
 type Statement struct {
-	// The parentheses ( ) force Participle to backtrack if a branch fails.
-	// We check Assignment first because it starts with a generic @Ident.
-	Assignment  *Assignment  `  ( @@`
-	Conditional *Conditional `  | @@`
-	Print       *Print       `  | @@ )`
+	// Revert to simple @@ tags.
+	// We will use UseLookahead(5) in MustBuild to handle the ambiguity.
+	Assignment  *Assignment  `  @@`
+	Conditional *Conditional `| @@`
+	Print       *Print       `| @@`
 }
 
 type Assignment struct {
@@ -47,12 +50,11 @@ type Assignment struct {
 type Print struct {
 	Args []*Expression `"say" @@+`
 }
-
 type Conditional struct {
-	Condition *Expression  `"suppose" @@`
-	Body      []*Statement `@@*`
-	Otherwise []*Statement `( "otherwise" @@* )?`
-	End       string       ` "enough"`
+	Condition *Expression  `"suppose" @@ Newline*` // Newline after condition
+	Body      []*Statement `( @@ Newline* )*`
+	Otherwise []*Statement `( "otherwise" Newline* ( @@ Newline* )* )?`
+	End       string       `"enough"`
 }
 
 type Expression struct {
@@ -62,6 +64,7 @@ type Expression struct {
 }
 
 type Term struct {
+	Pos   lexer.Position
 	Attr  *Attr   `  @@`
 	Str   *string `| @String`
 	Bool  *string `| @( "copacetic" | "harsh" )`
@@ -69,6 +72,7 @@ type Term struct {
 }
 
 type Attr struct {
+	Pos  lexer.Position
 	Name string `@Ident "."`
 	Prop string `@Ident`
 }

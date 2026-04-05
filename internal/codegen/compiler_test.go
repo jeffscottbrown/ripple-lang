@@ -19,7 +19,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// Boolean variable must be stack-allocated and initialised to true (copacetic).
 		assert.Contains(t, ir, "alloca i1")
@@ -41,7 +42,8 @@ vibe becomes harsh`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// A boolean variable must be allocated on the stack.
 		assert.Contains(t, ir, "alloca i1")
@@ -58,14 +60,19 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// harshing_the_vibe_of must lower to icmp ne on i1 values.
 		assert.Contains(t, ir, "icmp ne i1")
 	})
 
 	t.Run("Louder_than operator", func(t *testing.T) {
-		code := `["albums"]
+		code := `["circle of friends"]
+jerry: "Jerry"
+janis: "Janis"
+
+["albums"]
 jerry: { "A" "B" "C" }
 janis: { "A" "B" }
 
@@ -76,14 +83,19 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// louder_than must lower to icmp sgt on i32 values.
 		assert.Contains(t, ir, "icmp sgt i32")
 	})
 
 	t.Run("Quieter_than operator", func(t *testing.T) {
-		code := `["albums"]
+		code := `["circle of friends"]
+jerry: "Jerry"
+janis: "Janis"
+
+["albums"]
 jerry: { "A" "B" "C" }
 janis: { "A" "B" }
 
@@ -94,7 +106,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// quieter_than must lower to icmp slt on i32 values.
 		assert.Contains(t, ir, "icmp slt i32")
@@ -111,7 +124,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// A conditional with an otherwise clause must emit the else basic block.
 		assert.Contains(t, ir, "else.0:")
@@ -126,7 +140,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// The merge block must still appear for fall-through.
 		assert.Contains(t, ir, "merge.0:")
@@ -135,17 +150,21 @@ enough`
 	})
 
 	t.Run("Has true at compile time", func(t *testing.T) {
-		code := `["albums"]
+		code := `["circle of friends"]
+jerry: "Jerry"
+
+["albums"]
 jerry: { "A" "B" "C" }
 
 ["jam"]
-suppose jerry.albums has "A"
+suppose jerry has "A"
 say "Found it"
 enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// has is resolved at compile time; "A" is present so the branch must be
 		// unconditionally true.
@@ -153,17 +172,21 @@ enough`
 	})
 
 	t.Run("Has false at compile time", func(t *testing.T) {
-		code := `["albums"]
+		code := `["circle of friends"]
+jerry: "Jerry"
+
+["albums"]
 jerry: { "A" "B" "C" }
 
 ["jam"]
-suppose jerry.albums has "Abbey Road"
+suppose jerry has "Abbey Road"
 say "Found it"
 enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// has is resolved at compile time; "Abbey Road" is absent so the branch
 		// must be unconditionally false.
@@ -179,14 +202,19 @@ say jerry.name`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// The resolved string value must be present as a global constant.
 		assert.Contains(t, ir, "Jerry Garcia")
 	})
 
 	t.Run("Albumcount resolution", func(t *testing.T) {
-		code := `["albums"]
+		code := `["circle of friends"]
+jerry: "Jerry"
+janis: "Janis"
+
+["albums"]
 jerry: { "A" "B" "C" }
 janis: { "A" "B" }
 
@@ -197,7 +225,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// albumcount is resolved at compile time to the length of the list.
 		// jerry has 3 albums, janis has 2.
@@ -210,7 +239,8 @@ say "a" "b"`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// Two string arguments must produce a format string with two %s directives.
 		assert.Contains(t, ir, "%s%s")
@@ -226,7 +256,8 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// and between two i1 values must lower to the LLVM and i1 instruction.
 		assert.Contains(t, ir, "and i1")
@@ -242,9 +273,66 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.NewCompiler().Compile(prog)
+		require.NoError(t, err)
 
 		// or between two i1 values must lower to the LLVM or i1 instruction.
 		assert.Contains(t, ir, "or i1")
+	})
+}
+
+func TestCompiler_Analysis(t *testing.T) {
+	t.Run("Reject collection in circle of friends", func(t *testing.T) {
+		code := `["circle of friends"]
+jerry: { "Jerry" "Garcia" }`
+
+		prog, err := parser.Parse(code)
+		require.NoError(t, err)
+
+		c := codegen.NewCompiler()
+		_, err = c.Compile(prog)
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "cannot be a collection")
+	})
+
+	t.Run("Reject unknown artist property", func(t *testing.T) {
+		code := `["circle of friends"]
+jerry: "Jerry Garcia"
+
+["jam"]
+say jerry.height`
+
+		prog, err := parser.Parse(code)
+		require.NoError(t, err)
+		_, err = codegen.NewCompiler().Compile(prog)
+		assert.Error(t, err)
+		// Update to match: "artist 'jerry' does not have a property named 'height'"
+		assert.ErrorContains(t, err, "does not have a property named 'height'")
+	})
+
+	t.Run("Reject unrecorded artist", func(t *testing.T) {
+		code := `["jam"]
+say bob.name`
+
+		prog, err := parser.Parse(code)
+		require.NoError(t, err)
+
+		_, err = codegen.NewCompiler().Compile(prog)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "not in your circle of friends")
+	})
+
+	t.Run("Reject usage before definition", func(t *testing.T) {
+		code := `["jam"]
+say vibe
+vibe becomes copacetic`
+
+		prog, err := parser.Parse(code)
+		require.NoError(t, err)
+
+		_, err = codegen.NewCompiler().Compile(prog)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "variable or artist 'vibe' is not defined")
 	})
 }
