@@ -491,7 +491,7 @@ suppose vibe harshing_the_vibe_of harsh
 enough
 `
 	var out bytes.Buffer
-	err := runner.Execute(src, &out) // Pass the test buffer here
+	err := runner.Execute(src, &out)
 	require.NoError(t, err)
 
 	assert.True(t, strings.Contains(out.String(), "--- Ripple Report ---"), "expected report header line")
@@ -575,6 +575,26 @@ a becomes harsh
 b becomes copacetic
 suppose a and b
     say "should not print"
+enough
+`
+	var out bytes.Buffer
+	err := runner.Execute(src, &out)
+	require.NoError(t, err)
+	assert.Equal(t, "", out.String())
+}
+
+func TestExecute_Comments(t *testing.T) {
+	t.Parallel()
+	skipIfNoClang(t)
+
+	src := `
+["jam"]
+a becomes harsh
+# a becomes copacetic
+# b becomes harsh
+b becomes copacetic
+suppose a and b
+    say "should not print" # nothing to see here
 enough
 `
 	var out bytes.Buffer

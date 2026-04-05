@@ -177,6 +177,21 @@ enough
 | `and` | Logical AND | `a vibes_like copacetic and b vibes_like copacetic` |
 | `or` | Logical OR | `a vibes_like copacetic or b vibes_like copacetic` |
 
+## Line Level Comments
+The hash symbol (#) is used to designate code that is
+intended to be ignored by the compiler and is included
+for other readers of the source code.
+
+
+```sh
+# this will indicate who has more albums
+suppose jerry.albumcount louder_than janis.albumcount
+    say jerry.name " wins" # this is a comment
+otherwise
+    say janis.name " wins"
+enough
+```
+
 ### Keyword Reference
 
 `becomes` `say` `snitch` `suppose` `otherwise` `enough` `copacetic` `harsh` `vibes_like` `harshing_the_vibe_of` `louder_than` `quieter_than` `has` `and` `or`

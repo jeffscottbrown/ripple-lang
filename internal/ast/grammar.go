@@ -7,6 +7,7 @@ import (
 
 var ripleLexer = lexer.MustStateful(lexer.Rules{
 	"Root": {
+		{Name: "Comment", Pattern: `#[^\n\r]*`},
 		{Name: "String", Pattern: `"[^"]*"`},
 		{Name: "Punct", Pattern: `[[\]{}.:]`},
 		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|snitch|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
@@ -27,6 +28,7 @@ type Section struct {
 	Albums  *AlbumsSection          `| @@`
 	Jam     *JamSection             `| @@`
 }
+
 type CircleOfFriendsSection struct {
 	Name    string         `"[" @"circle of friends" "]" Newline*`
 	Entries []*FriendEntry `( @@ Newline* )*`
@@ -48,6 +50,7 @@ type AlbumEntry struct {
 	Key        string   `@Ident ":"`
 	Collection []string `"{" Newline* @String* (Newline* @String)* Newline* "}"`
 }
+
 type JamSection struct {
 	Name       string       `"[" @"jam" "]" Newline*`
 	Statements []*Statement `( @@ Newline* )*`
@@ -70,9 +73,11 @@ type Assignment struct {
 type Snitch struct {
 	Args []*Expression `"snitch" @@+`
 }
+
 type Print struct {
 	Args []*Expression `"say" @@+`
 }
+
 type Conditional struct {
 	Condition *Expression  `"suppose" @@ Newline*`
 	Body      []*Statement `( @@ Newline* )*`
@@ -104,5 +109,5 @@ var Parser = participle.MustBuild[Program](
 	participle.Lexer(ripleLexer),
 	participle.Unquote("String"),
 	participle.UseLookahead(5),
-	participle.Elide("Whitespace"),
+	participle.Elide("Whitespace", "Comment"),
 )

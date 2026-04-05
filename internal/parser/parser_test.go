@@ -79,8 +79,6 @@ vibe becomes copacetic`
 	assert.Equal(t, "copacetic", *a.Value.Left.Bool)
 }
 
-// ... Repeat similar logic for Print and Conditionals ...
-
 func TestParse_ComplexProgram(t *testing.T) {
 	code := `["circle of friends"]
 jerry: "Jerry Garcia"
