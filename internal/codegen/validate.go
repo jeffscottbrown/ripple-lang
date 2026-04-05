@@ -20,21 +20,22 @@ func (c *Compiler) validateStatements(stmts []*ast.Statement, localVars map[stri
 					return err
 				}
 			}
-		case stmt.Snitch != nil:
-			for _, arg := range stmt.Snitch.Args {
-				if err := c.validateExpr(arg, localVars); err != nil {
-					return err
-				}
-			}
 		case stmt.Conditional != nil:
+			// Check condition
 			if err := c.validateExpr(stmt.Conditional.Condition, localVars); err != nil {
 				return err
 			}
-			// Recursive calls for blocks
-			if err := c.validateStatements(stmt.Conditional.Body, localVars); err != nil {
+			// Scope check: We create a copy of localVars so variables
+			// defined inside a block don't leak out (standard scoping).
+			innerVars := make(map[string]bool)
+			for k, v := range localVars {
+				innerVars[k] = v
+			}
+
+			if err := c.validateStatements(stmt.Conditional.Body, innerVars); err != nil {
 				return err
 			}
-			if err := c.validateStatements(stmt.Conditional.Otherwise, localVars); err != nil {
+			if err := c.validateStatements(stmt.Conditional.Otherwise, innerVars); err != nil {
 				return err
 			}
 		}
@@ -54,20 +55,20 @@ func (c *Compiler) validateExpr(e *ast.Expression, localVars map[string]bool) er
 
 func (c *Compiler) validateTerm(t *ast.Term, localVars map[string]bool) error {
 	if t.Ident != nil {
-		// An identifier is valid if it's a local variable OR a known artist.
-		_, isVar := localVars[*t.Ident]
-		_, isArtist := c.names[*t.Ident]
-
+		name := *t.Ident
+		_, isVar := localVars[name]
+		_, isArtist := c.names[name]
 		if !isVar && !isArtist {
-			return fmt.Errorf("%w: %s", ErrUndefined, *t.Ident)
+			return fmt.Errorf("%w: %s", ErrUndefined, name)
 		}
 	}
 	if t.Attr != nil {
 		if _, exists := c.names[t.Attr.Name]; !exists {
 			return fmt.Errorf("%w: %s", ErrUnknownArtist, t.Attr.Name)
 		}
-		props := map[string]bool{"name": true, "albums": true, "albumcount": true}
-		if !props[t.Attr.Prop] {
+		// Ripple only supports 'name', 'albums', and 'albumcount'
+		validProps := map[string]bool{"name": true, "albumcount": true, "albums": true}
+		if !validProps[t.Attr.Prop] {
 			return fmt.Errorf("%w: %s", ErrInvalidProperty, t.Attr.Prop)
 		}
 	}

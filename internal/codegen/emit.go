@@ -2,182 +2,171 @@ package codegen
 
 import (
 	"fmt"
-	"runtime"
-	"strings"
 
 	"github.com/jeffscottbrown/ripple-lang/internal/ast"
+	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
+	"github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 )
 
-func (c *Compiler) emitStatements(stmts []*ast.Statement) {
+// nolint:ireturn
+func (c *Compiler) emitStatements(stmts []*ast.Statement, block *ir.Block) *ir.Block {
+	currentBlock := block
 	for _, stmt := range stmts {
 		switch {
 		case stmt.Print != nil:
-			c.emitOutput(stmt.Print.Args, false)
+			c.emitOutput(stmt.Print.Args, false, currentBlock)
 		case stmt.Snitch != nil:
-			c.emitOutput(stmt.Snitch.Args, true)
+			c.emitOutput(stmt.Snitch.Args, true, currentBlock)
 		case stmt.Assignment != nil:
-			val := c.emitExpression(stmt.Assignment.Value)
-			c.vars[stmt.Assignment.Target] = true
-			fmt.Fprintf(&c.fn, "  %%%s = alloca i1, align 1\n", stmt.Assignment.Target)
-			fmt.Fprintf(&c.fn, "  store i1 %s, i1* %%%s, align 1\n", val.v, stmt.Assignment.Target)
+			val := c.emitExpression(stmt.Assignment.Value, currentBlock)
+			alloc, exists := c.vars[stmt.Assignment.Target]
+			if !exists {
+				alloc = c.entry.NewAlloca(types.I1)
+				c.vars[stmt.Assignment.Target] = alloc
+			}
+			currentBlock.NewStore(val, alloc)
 		case stmt.Conditional != nil:
-			c.emitConditional(stmt.Conditional)
+			currentBlock = c.emitConditional(stmt.Conditional, currentBlock)
 		}
 	}
+	return currentBlock
 }
 
-func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
-	var args []typedVal
+func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool, block *ir.Block) {
+	format := ""
+	var args []value.Value
 	for _, expr := range expressions {
-		args = append(args, c.emitTerm(expr.Left))
-	}
-
-	var fmtBuf strings.Builder
-	for _, a := range args {
-		if a.t == "i8*" {
-			fmtBuf.WriteString("%s")
+		val := c.emitTerm(expr.Left, block)
+		args = append(args, val)
+		if val.Type().Equal(types.I8Ptr) {
+			format += "%s"
 		} else {
-			fmtBuf.WriteString("%d")
+			format += "%d"
 		}
 	}
-	fmtBuf.WriteString("\\0A\\00")
-	fmtStr := fmtBuf.String()
+	format += "\x0A\x00"
 
-	fmtName, fmtSize := c.internString(fmtStr)
-	fmtTmp := c.nextTmp()
-	fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
-		fmtTmp, fmtSize, fmtSize, fmtName)
+	content := constant.NewCharArrayFromString(format)
+	cType := types.NewArray(uint64(len(format)), types.I8)
+	fmtStr := c.module.NewGlobalDef("", content)
+	fmtPtr := block.NewGetElementPtr(cType, fmtStr, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 
 	if isStderr {
-		symbol := "@stderr"
-		if runtime.GOOS == targetOSDarwin {
-			symbol = "@__stderrp"
-		}
-		errPtr := c.nextTmp()
-		fmt.Fprintf(&c.fn, "  %%%s = load i8*, i8** %s, align 8\n", errPtr, symbol)
-		fmt.Fprintf(&c.fn, "  call i32 (i8*, i8*, ...) @fprintf(i8* %%%s, i8* %%%s", errPtr, fmtTmp)
+		stderrStream := block.NewLoad(types.I8Ptr, c.stderr)
+		callArgs := append([]value.Value{stderrStream, fmtPtr}, args...)
+		block.NewCall(c.fprintf, callArgs...)
 	} else {
-		fmt.Fprintf(&c.fn, "  call i32 (i8*, ...) @printf(i8* %%%s", fmtTmp)
-	}
-
-	for _, a := range args {
-		fmt.Fprintf(&c.fn, ", %s %s", a.t, a.v)
-	}
-	c.fn.WriteString(")\n")
-
-	if !isStderr {
-		fmt.Fprintf(&c.fn, "  call i32 @fflush(i8* null)\n")
+		callArgs := append([]value.Value{fmtPtr}, args...)
+		block.NewCall(c.printf, callArgs...)
+		block.NewCall(c.fflush, constant.NewNull(types.I8Ptr))
 	}
 }
 
-func (c *Compiler) emitConditional(cond *ast.Conditional) {
-	labelIdx := c.tmpIdx
-	c.tmpIdx++
-
-	res := c.emitExpression(cond.Condition)
-	thenLabel := fmt.Sprintf("then.%d", labelIdx)
-	elseLabel := fmt.Sprintf("else.%d", labelIdx)
-	mergeLabel := fmt.Sprintf("merge.%d", labelIdx)
-
-	if len(cond.Otherwise) > 0 {
-		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", res.v, thenLabel, elseLabel)
-	} else {
-		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", res.v, thenLabel, mergeLabel)
-	}
-
-	fmt.Fprintf(&c.fn, "%s:\n", thenLabel)
-	c.emitStatements(cond.Body)
-	fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
-
-	if len(cond.Otherwise) > 0 {
-		fmt.Fprintf(&c.fn, "%s:\n", elseLabel)
-		c.emitStatements(cond.Otherwise)
-		fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
-	}
-	fmt.Fprintf(&c.fn, "%s:\n", mergeLabel)
-}
-
-func (c *Compiler) emitExpression(expr *ast.Expression) typedVal {
-	left := c.emitTerm(expr.Left)
-	if expr.Op == "" {
-		return left
-	}
-	right := c.emitTerm(expr.Right)
-	tmp := c.nextTmp()
-
-	switch expr.Op {
-	case "louder_than":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp sgt %s %s, %s\n", tmp, left.t, left.v, right.v)
-	case "quieter_than":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp slt %s %s, %s\n", tmp, left.t, left.v, right.v)
-	case "vibes_like":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp eq %s %s, %s\n", tmp, left.t, left.v, right.v)
-	case "harshing_the_vibe_of":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp ne %s %s, %s\n", tmp, left.t, left.v, right.v)
-	case "and":
-		fmt.Fprintf(&c.fn, "  %%%s = and i1 %s, %s\n", tmp, left.v, right.v)
-	case "or":
-		fmt.Fprintf(&c.fn, "  %%%s = or i1 %s, %s\n", tmp, left.v, right.v)
-	case "has":
-		var artist string
-		// Safety check: is Left an Attr (jerry.albums)?
+// nolint:ireturn
+func (c *Compiler) emitExpression(expr *ast.Expression, block *ir.Block) value.Value {
+	if expr.Op == "has" {
+		artist := ""
 		if expr.Left.Attr != nil {
 			artist = expr.Left.Attr.Name
 		} else if expr.Left.Ident != nil {
-			// Or is it a direct Ident (jerry)?
 			artist = *expr.Left.Ident
 		}
 
-		// Safety check: is Right a string literal ("A")?
 		if artist != "" && expr.Right != nil && expr.Right.Str != nil {
 			target := *expr.Right.Str
 			list := c.albums[artist]
-			found := "0"
 			for _, album := range list {
 				if album == target {
-					found = "1"
-					break
+					return constant.NewInt(types.I1, 1)
 				}
 			}
-			return typedVal{"i1", found}
 		}
-		// If the structure is weird, don't panic, just return false (harsh)
-		return typedVal{"i1", "0"}
+		return constant.NewInt(types.I1, 0)
 	}
-	return typedVal{"i1", "%" + tmp}
+
+	left := c.emitTerm(expr.Left, block)
+	if expr.Op == "" {
+		return left
+	}
+	right := c.emitTerm(expr.Right, block)
+
+	switch expr.Op {
+	case "louder_than":
+		return block.NewICmp(enum.IPredSGT, left, right)
+	case "quieter_than":
+		return block.NewICmp(enum.IPredSLT, left, right)
+	case "vibes_like":
+		return block.NewICmp(enum.IPredEQ, left, right)
+	case "harshing_the_vibe_of":
+		return block.NewICmp(enum.IPredNE, left, right)
+	case "and":
+		return block.NewAnd(left, right)
+	case "or":
+		return block.NewOr(left, right)
+	}
+	return constant.NewInt(types.I1, 0)
 }
 
-func (c *Compiler) emitTerm(term *ast.Term) typedVal {
+// nolint:ireturn
+func (c *Compiler) emitTerm(term *ast.Term, block *ir.Block) value.Value {
 	switch {
 	case term.Str != nil:
-		name, size := c.internString(*term.Str + "\\00")
-		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
-			tmp, size, size, name)
-		return typedVal{"i8*", "%" + tmp}
+		s := *term.Str + "\x00"
+		cType := types.NewArray(uint64(len(s)), types.I8)
+		strGlobal := c.module.NewGlobalDef("", constant.NewCharArrayFromString(s))
+		return block.NewGetElementPtr(cType, strGlobal, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 	case term.Bool != nil:
-		val := "0"
+		var val int64
 		if *term.Bool == "copacetic" {
-			val = "1"
+			val = 1
 		}
-		return typedVal{"i1", val}
+		return constant.NewInt(types.I1, val)
 	case term.Ident != nil:
-		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn, "  %%%s = load i1, i1* %%%s, align 1\n", tmp, *term.Ident)
-		return typedVal{"i1", "%" + tmp}
-	case term.Attr != nil:
-		if term.Attr.Prop == "name" {
-			val := c.names[term.Attr.Name]
-			name, size := c.internString(val + "\\00")
-			tmp := c.nextTmp()
-			fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
-				tmp, size, size, name)
-			return typedVal{"i8*", "%" + tmp}
+		if alloc, ok := c.vars[*term.Ident]; ok {
+			return block.NewLoad(types.I1, alloc)
 		}
-		if term.Attr.Prop == "albumcount" {
-			count := len(c.albums[term.Attr.Name])
-			return typedVal{"i32", fmt.Sprintf("%d", count)}
+	case term.Attr != nil:
+		switch term.Attr.Prop {
+		case "name":
+			val := c.names[term.Attr.Name] + "\x00"
+			cType := types.NewArray(uint64(len(val)), types.I8)
+			strGlobal := c.module.NewGlobalDef("", constant.NewCharArrayFromString(val))
+			return block.NewGetElementPtr(cType, strGlobal, constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+		case "albumcount":
+			return constant.NewInt(types.I32, int64(len(c.albums[term.Attr.Name])))
 		}
 	}
-	return typedVal{"i32", "0"}
+	return constant.NewInt(types.I32, 0)
+}
+
+func (c *Compiler) emitConditional(cond *ast.Conditional, block *ir.Block) *ir.Block {
+	i := c.blockIdx
+	c.blockIdx++
+
+	thenBlock := c.main.NewBlock(fmt.Sprintf("then.%d", i))
+	mergeBlock := c.main.NewBlock(fmt.Sprintf("merge.%d", i))
+
+	condVal := c.emitExpression(cond.Condition, block)
+
+	if len(cond.Otherwise) > 0 {
+		elseBlock := c.main.NewBlock(fmt.Sprintf("else.%d", i))
+		block.NewCondBr(condVal, thenBlock, elseBlock)
+
+		lastElse := c.emitStatements(cond.Otherwise, elseBlock)
+		if lastElse.Term == nil {
+			lastElse.NewBr(mergeBlock)
+		}
+	} else {
+		block.NewCondBr(condVal, thenBlock, mergeBlock)
+	}
+
+	lastThen := c.emitStatements(cond.Body, thenBlock)
+	if lastThen.Term == nil {
+		lastThen.NewBr(mergeBlock)
+	}
+
+	return mergeBlock
 }
