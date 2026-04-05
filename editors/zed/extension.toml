@@ -8,5 +8,5 @@ repository = "https://github.com/jeffscottbrown/ripple-lang"
 
 [grammars.ripple]
 repository = "https://github.com/jeffscottbrown/ripple-lang"
-rev = "<SHA of the root repo commit you want Zed to use>"
+rev = "340bf673b57724ea4f6aa7cf367d5f6d711ed413"
 path = "editors/zed/grammars/ripple"
