@@ -7,6 +7,7 @@
 package runner_test
 
 import (
+	"bytes"
 	"os/exec"
 	"strings"
 	"testing"
@@ -41,9 +42,10 @@ func TestExecute_Say_StringLiteral(t *testing.T) {
 ["jam"]
 say "hello world"
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "hello world\n", out)
+	assert.Equal(t, "hello world\n", out.String())
 }
 
 // TestExecute_Assignment_Copacetic_TrueBranch verifies that assigning the boolean
@@ -66,9 +68,10 @@ suppose vibe vibes_like copacetic
     say "it is golden"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "it is golden\n", out)
+	assert.Equal(t, "it is golden\n", out.String())
 }
 
 // TestExecute_Assignment_Harsh_FalseBranch verifies that assigning 'harsh'
@@ -90,9 +93,10 @@ suppose vibe vibes_like copacetic
     say "should not print"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "", out)
+	assert.Equal(t, "", out.String())
 }
 
 // TestExecute_HarshingTheVibeOf_NotEqual verifies the 'harshing_the_vibe_of'
@@ -115,9 +119,10 @@ suppose vibe harshing_the_vibe_of harsh
     say "vibe is not muddy"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "vibe is not muddy\n", out)
+	assert.Equal(t, "vibe is not muddy\n", out.String())
 }
 
 // TestExecute_Otherwise_TrueBranch verifies the full suppose/otherwise/enough
@@ -141,9 +146,10 @@ otherwise
     say "muddy branch"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "golden branch\n", out)
+	assert.Equal(t, "golden branch\n", out.String())
 }
 
 // TestExecute_Otherwise_FalseBranch verifies that when the condition of a
@@ -166,9 +172,10 @@ otherwise
     say "muddy branch"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "muddy branch\n", out)
+	assert.Equal(t, "muddy branch\n", out.String())
 }
 
 // TestExecute_LouderThan_AlbumCount verifies the 'louder_than' (greater-than)
@@ -198,9 +205,10 @@ suppose jerry.albumcount louder_than janis.albumcount
     say "Jerry has more albums"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Jerry has more albums\n", out)
+	assert.Equal(t, "Jerry has more albums\n", out.String())
 }
 
 // TestExecute_QuieterThan_AlbumCount verifies the 'quieter_than' (less-than)
@@ -229,9 +237,10 @@ suppose janis.albumcount quieter_than jerry.albumcount
     say "Janis has fewer albums"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Janis has fewer albums\n", out)
+	assert.Equal(t, "Janis has fewer albums\n", out.String())
 }
 
 // TestExecute_Has_Present verifies that the 'has' operator returns true when
@@ -258,9 +267,10 @@ suppose jerry.albums has "American Beauty"
     say "Found American Beauty"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Found American Beauty\n", out)
+	assert.Equal(t, "Found American Beauty\n", out.String())
 }
 
 // TestExecute_Has_Absent verifies that the 'has' operator returns false when
@@ -289,9 +299,10 @@ otherwise
     say "Not found"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Not found\n", out)
+	assert.Equal(t, "Not found\n", out.String())
 }
 
 // TestExecute_NameResolution verifies that the '.name' attribute on a person
@@ -312,9 +323,10 @@ jerry: "Jerry Garcia"
 ["jam"]
 say jerry.name
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Jerry Garcia\n", out)
+	assert.Equal(t, "Jerry Garcia\n", out.String())
 }
 
 // TestExecute_MultipleArgs_SameLine verifies that a say statement with
@@ -339,9 +351,10 @@ jerry: "Jerry Garcia"
 ["jam"]
 say "Hello, " jerry.name "!"
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "Hello, Jerry Garcia!\n", out)
+	assert.Equal(t, "Hello, Jerry Garcia!\n", out.String())
 }
 
 // TestExecute_Variable_From_Comparison verifies that the result of a
@@ -373,9 +386,10 @@ suppose x vibes_like copacetic
     say "jerry wins"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
-	assert.Equal(t, "jerry wins\n", out)
+	assert.Equal(t, "jerry wins\n", out.String())
 }
 
 // TestExecute_CompleteProgram exercises all major Ripple language features
@@ -476,17 +490,18 @@ suppose vibe harshing_the_vibe_of harsh
     say "Not muddy at all"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out) // Pass the test buffer here
 	require.NoError(t, err)
 
-	assert.True(t, strings.Contains(out, "--- Ripple Report ---"), "expected report header line")
-	assert.True(t, strings.Contains(out, "Jerry has more albums"), "expected louder_than result")
-	assert.True(t, strings.Contains(out, "Janis has fewer albums"), "expected quieter_than result")
-	assert.True(t, strings.Contains(out, "Found American Beauty"), "expected has-present result")
-	assert.True(t, strings.Contains(out, "Dark Side not found"), "expected has-absent otherwise result")
-	assert.True(t, strings.Contains(out, "Golden vibes detected"), "expected copacetic then-branch")
-	assert.False(t, strings.Contains(out, "Muddy vibes"), "expected copacetic otherwise-branch to be skipped")
-	assert.True(t, strings.Contains(out, "Not muddy at all"), "expected harshing_the_vibe_of result")
+	assert.True(t, strings.Contains(out.String(), "--- Ripple Report ---"), "expected report header line")
+	assert.True(t, strings.Contains(out.String(), "Jerry has more albums"), "expected louder_than result")
+	assert.True(t, strings.Contains(out.String(), "Janis has fewer albums"), "expected quieter_than result")
+	assert.True(t, strings.Contains(out.String(), "Found American Beauty"), "expected has-present result")
+	assert.True(t, strings.Contains(out.String(), "Dark Side not found"), "expected has-absent otherwise result")
+	assert.True(t, strings.Contains(out.String(), "Golden vibes detected"), "expected copacetic then-branch")
+	assert.False(t, strings.Contains(out.String(), "Muddy vibes"), "expected copacetic otherwise-branch to be skipped")
+	assert.True(t, strings.Contains(out.String(), "Not muddy at all"), "expected harshing_the_vibe_of result")
 }
 
 // TestExecute_And_BothTrue verifies that the 'and' operator evaluates to true
@@ -508,9 +523,11 @@ suppose a and b
     say "both golden"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out)
+
 	require.NoError(t, err)
-	assert.Equal(t, "both golden\n", out)
+	assert.Equal(t, "both golden\n", out.String())
 }
 
 // TestExecute_Or_OneFalse verifies that the 'or' operator evaluates to true
@@ -533,9 +550,11 @@ suppose a or b
     say "at least one"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out)
+
 	require.NoError(t, err)
-	assert.Equal(t, "at least one\n", out)
+	assert.Equal(t, "at least one\n", out.String())
 }
 
 // TestExecute_And_OneFalse verifies that the 'and' operator evaluates to false
@@ -558,7 +577,8 @@ suppose a and b
     say "should not print"
 enough
 `
-	out, err := runner.Execute(src)
+	var out bytes.Buffer
+	err := runner.Execute(src, &out)
 	require.NoError(t, err)
-	assert.Equal(t, "", out)
+	assert.Equal(t, "", out.String())
 }

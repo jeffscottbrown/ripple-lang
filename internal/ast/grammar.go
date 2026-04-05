@@ -9,7 +9,7 @@ var ripleLexer = lexer.MustStateful(lexer.Rules{
 	"Root": {
 		{Name: "String", Pattern: `"[^"]*"`},
 		{Name: "Punct", Pattern: `[[\]{}.:]`},
-		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
+		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|snitch|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
 		{Name: "Newline", Pattern: `\r?\n`},     // Capture Newlines
 		{Name: "Whitespace", Pattern: `[ \t]+`}, // Only tabs and spaces
@@ -40,6 +40,7 @@ type Statement struct {
 	Assignment  *Assignment  `  @@`
 	Conditional *Conditional `| @@`
 	Print       *Print       `| @@`
+	Snitch      *Snitch      `| @@`
 }
 
 type Assignment struct {
@@ -47,6 +48,9 @@ type Assignment struct {
 	Value  *Expression `@@`
 }
 
+type Snitch struct {
+	Args []*Expression `"snitch" @@+`
+}
 type Print struct {
 	Args []*Expression `"say" @@+`
 }

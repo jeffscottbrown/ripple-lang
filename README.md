@@ -28,14 +28,11 @@ make ir
 
 # 4. Run the test suite
 make test
-```
 
-Or run any `.ripple` file directly:
-
-```sh
-./ripple-lang demo.ripple           # compile and run
-./ripple-lang -v demo.ripple        # print LLVM IR instead of running
-./ripple-lang -o myapp demo.ripple  # compile to a standalone binary named 'myapp'
+# 5. Or run any .ripple file directly:
+./ripple-lang demo.ripple            # compile and run
+./ripple-lang -v demo.ripple         # print LLVM IR instead of running
+./ripple-lang -o myapp demo.ripple   # compile to a standalone binary named 'myapp'
 ```
 
 ---
@@ -99,11 +96,19 @@ grace: {
 
 ### Printing — `say`
 
-Print one or more values on a single line. Multiple values are concatenated with no separator.
+Print one or more values on a single line to standard output (`stdout`). Multiple values are concatenated with no separator.
 
 ```sh
 say "Hello, world"
 say jerry.name " has " jerry.albumcount " albums"
+```
+
+### Error Logging — `snitch`
+
+Print a message to standard error (`stderr`). This is used for flagging when the vibe is off or providing diagnostic info that shouldn't interfere with the main output.
+
+```sh
+snitch "The drummer is late"
 ```
 
 ### Assignment — `becomes`
@@ -174,7 +179,7 @@ enough
 
 ### Keyword Reference
 
-`becomes` `say` `suppose` `otherwise` `enough` `copacetic` `harsh` `vibes_like` `harshing_the_vibe_of` `louder_than` `quieter_than` `has` `and` `or`
+`becomes` `say` `snitch` `suppose` `otherwise` `enough` `copacetic` `harsh` `vibes_like` `harshing_the_vibe_of` `louder_than` `quieter_than` `has` `and` `or`
 
 ---
 
@@ -203,6 +208,10 @@ grace: {
 }
 
 ["jam"]
+suppose jerry.albumcount quieter_than 1
+    snitch "Warning: Jerry has no albums recorded."
+enough
+
 suppose jerry.albumcount louder_than janis.albumcount
     say jerry.name " has more albums than " janis.name
 otherwise
@@ -290,57 +299,11 @@ make fmt           # format all Go source files
 
 ## Zed Editor Support
 
-The `editors/zed/` directory contains a first-class Zed extension for Ripple. It gives you:
+The `editors/zed/` directory contains a first-class Zed extension for Ripple.
 
-- **Syntax highlighting** — sections, keywords, operators, string literals, booleans (`copacetic` / `harsh`), attribute access, and collection delimiters
+- **Syntax highlighting** — sections, keywords, operators, string literals, booleans, attribute access, and collection delimiters.
 - **Bracket matching & auto-close** — `[…]`, `{…}`, and `"…"`
-- **Auto-indent** — inside `suppose … enough` and `suppose … otherwise … enough` blocks
-- **Document outline** — every `["section name"]` and top-level assignment appears in the Outline panel (`Cmd+Shift+O`)
-
-The extension uses a Tree-sitter grammar compiled from `editors/zed/grammars/ripple/grammar.js`.
-
-### Installation
-
-1. Open the Extensions panel in Zed (`Cmd+Shift+X`).
-2. Click **Install Dev Extension**.
-3. Navigate to and select the `editors/zed/` directory inside the repo.
-
-Zed will compile the Tree-sitter grammar automatically on first load. Open any `.ripple` file and syntax highlighting is active immediately.
-
-### If you see a grammar compile error
-
-The grammar's local git repository may need to be reinitialised. Run the following from the repo root:
-
-```sh
-cd editors/zed/grammars/ripple
-git init
-git remote add origin https://github.com/jeffscottbrown/ripple-lang
-git add -A
-git commit -m "Grammar"
-```
-
-Then copy the SHA printed by that last `git commit` command into `editors/zed/extension.toml`:
-
-```toml
-[grammars.ripple]
-repository = "https://github.com/jeffscottbrown/ripple-lang"
-commit = "<sha-from-above>"
-path = "editors/zed/grammars/ripple"
-```
-
-Try installing the extension again — the compile error should be gone.
-
-### Snippets
-
-Ripple has no language server yet, so completions are word-based. For snippet-style keyword completions, copy the definitions from `editors/zed/README.md` into `~/.config/zed/snippets.json`. The three built-in snippets are:
-
-| Prefix | Expands to |
-|---|---|
-| `suppose` | A bare `suppose … enough` block |
-| `suppose-oth` | A full `suppose … otherwise … enough` block |
-| `becomes` | A `name becomes copacetic` assignment |
-
-All Ripple keywords are also surfaced as completions automatically once the grammar is active.
+- **Auto-indent** — inside `suppose … enough` blocks
 
 ---
 

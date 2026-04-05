@@ -45,10 +45,11 @@ func main() {
 		return
 	}
 
-	output, err := runner.Execute(string(content))
+	// In main.go
+	err = runner.Execute(string(content), os.Stdout)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Print(output)
+	// No need to print 'output' here; it already happened in real-time!
 }

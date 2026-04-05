@@ -45,7 +45,7 @@ grace_has_more becomes grace.albumcount louder_than janis.albumcount
 suppose grace_has_more vibes_like copacetic
     say grace.name " has more albums than " janis.name
 otherwise
-    say grace.name " had fewer albums than " janis.name
+    snitch grace.name " had fewer albums than " janis.name
 enough
 
 jerry_not_smallest becomes jerry.albumcount harshing_the_vibe_of grace.albumcount

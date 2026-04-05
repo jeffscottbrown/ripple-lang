@@ -95,7 +95,15 @@ func (c *Compiler) Compile(prog *ast.Program) (string, error) {
 	if c.globals.Len() > 0 {
 		out.WriteString("\n")
 	}
-	out.WriteString("declare i32 @printf(i8* nocapture, ...)\n\n")
+
+	out.WriteString("declare i32 @printf(i8* nocapture, ...)\n")
+	out.WriteString("declare i32 @fprintf(i8*, i8* nocapture, ...)\n")
+
+	if runtime.GOOS == "darwin" {
+		out.WriteString("@__stderrp = external global i8*\n\n")
+	} else {
+		out.WriteString("@stderr = external global i8*\n\n")
+	}
 	out.WriteString("define i32 @main() {\n")
 	out.WriteString(c.fn.String())
 	out.WriteString("}\n")
@@ -149,6 +157,12 @@ func (c *Compiler) validateStatement(s *ast.Statement) error {
 				return err
 			}
 		}
+	case s.Snitch != nil:
+		for _, arg := range s.Snitch.Args {
+			if err := c.validateExpression(arg); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -158,9 +172,7 @@ func (c *Compiler) validateExpression(expr *ast.Expression) error {
 		return err
 	}
 	if expr.Right != nil {
-		if err := c.validateTerm(expr.Right); err != nil {
-			return err
-		}
+		return c.validateTerm(expr.Right)
 	}
 	return nil
 }
@@ -183,7 +195,19 @@ func (c *Compiler) validateTerm(t *ast.Term) error {
 	return nil
 }
 
-// ── Statement emission ────────────────────────────────────────────────────────
+func (c *Compiler) validateAttr(attr *ast.Attr) error {
+	if _, exists := c.names[attr.Name]; !exists {
+		return participle.Errorf(attr.Pos, "artist '%s' is not in your circle of friends", attr.Name)
+	}
+	switch attr.Prop {
+	case "name", "albumcount", "albums":
+		return nil
+	default:
+		return participle.Errorf(attr.Pos, "artist '%s' does not have a property named '%s'", attr.Name, attr.Prop)
+	}
+}
+
+// ── Emission ──────────────────────────────────────────────────────────────────
 
 func (c *Compiler) emitStatements(stmts []*ast.Statement) {
 	for _, s := range stmts {
@@ -194,7 +218,9 @@ func (c *Compiler) emitStatements(stmts []*ast.Statement) {
 func (c *Compiler) emitStatement(s *ast.Statement) {
 	switch {
 	case s.Print != nil:
-		c.emitPrint(s.Print)
+		c.emitOutput(s.Print.Args, false)
+	case s.Snitch != nil:
+		c.emitOutput(s.Snitch.Args, true)
 	case s.Assignment != nil:
 		c.emitAssignment(s.Assignment)
 	case s.Conditional != nil:
@@ -202,38 +228,41 @@ func (c *Compiler) emitStatement(s *ast.Statement) {
 	}
 }
 
-// emitPrint handles the `say` statement, routing all output through printf.
-//
-// Each argument is evaluated via emitTerm. A format string is constructed
-// with one "%s" per i8* argument and one "%d" per numeric argument, followed
-// by an actual newline byte. The format string is interned as a global
-// constant, and a single printf call is emitted.
-func (c *Compiler) emitPrint(p *ast.Print) {
-	// Evaluate every argument and collect typed values.
+func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
 	var args []typedVal
-	for _, arg := range p.Args {
-		args = append(args, c.emitTerm(arg.Left))
+	for _, expr := range expressions {
+		args = append(args, c.emitTerm(expr.Left))
 	}
 
-	// Build the format string.
 	var fmtBuf strings.Builder
 	for _, a := range args {
-		if a.t == "i8*" {
+		switch a.t {
+		case "i8*":
 			fmtBuf.WriteString("%s")
-		} else {
+		case "i1", "i32":
 			fmtBuf.WriteString("%d")
 		}
 	}
-	fmtBuf.WriteByte('\n') // actual newline byte – llvmEscapeString will turn it into \0A
-	fmtStr := fmtBuf.String()
+	fmtBuf.WriteByte('\n')
+	fmtName, fmtSize := c.internString(fmtBuf.String())
 
-	// Intern the format string and obtain a pointer to it.
-	fmtName, fmtSize := c.internString(fmtStr)
 	fmtTmp := c.nextTmp()
 	fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 		fmtTmp, fmtSize, fmtSize, fmtName)
 
-	fmt.Fprintf(&c.fn, "  call i32 (i8*, ...) @printf(i8* %%%s", fmtTmp)
+	if isStderr {
+		symbol := "@stderr"
+		if runtime.GOOS == "darwin" {
+			symbol = "@__stderrp"
+		}
+
+		errPtr := c.nextTmp()
+		fmt.Fprintf(&c.fn, "  %%%s = load i8*, i8** %s, align 8\n", errPtr, symbol)
+		fmt.Fprintf(&c.fn, "  call i32 (i8*, i8*, ...) @fprintf(i8* %%%s, i8* %%%s", errPtr, fmtTmp)
+	} else {
+		fmt.Fprintf(&c.fn, "  call i32 (i8*, ...) @printf(i8* %%%s", fmtTmp)
+	}
+
 	for _, a := range args {
 		fmt.Fprintf(&c.fn, ", %s %s", a.t, a.v)
 	}
@@ -307,10 +336,9 @@ func (c *Compiler) emitExpr(expr *ast.Expression) string {
 	// no LLVM instructions are emitted.
 	if expr.Op == "has" {
 		var artistName string
-		switch {
-		case expr.Left.Ident != nil:
+		if expr.Left.Ident != nil {
 			artistName = *expr.Left.Ident
-		case expr.Left.Attr != nil:
+		} else if expr.Left.Attr != nil {
 			artistName = expr.Left.Attr.Name
 		}
 		if expr.Right != nil && expr.Right.Str != nil {
@@ -476,17 +504,4 @@ func llvmEscapeString(s string) string {
 		}
 	}
 	return b.String()
-}
-
-func (c *Compiler) validateAttr(attr *ast.Attr) error {
-	if _, exists := c.names[attr.Name]; !exists {
-		return participle.Errorf(attr.Pos, "artist '%s' is not in your circle of friends", attr.Name)
-	}
-
-	switch attr.Prop {
-	case "name", "albumcount", "albums": // "albums" must be valid
-		return nil
-	default:
-		return participle.Errorf(attr.Pos, "artist '%s' does not have a property named '%s'", attr.Name, attr.Prop)
-	}
 }

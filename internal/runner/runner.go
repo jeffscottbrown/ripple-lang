@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,17 +23,16 @@ func Compile(source string) (string, error) {
 	return codegen.NewCompiler().Compile(prog)
 }
 
-// Execute parses source as a Ripple program, compiles it to a native binary
-// with clang, runs the binary, and returns the captured standard output.
-func Execute(source string) (string, error) {
+// Execute now takes a writer for stdout.
+func Execute(source string, stdout io.Writer) error {
 	ir, err := Compile(source)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	tmpDir, err := os.MkdirTemp("", "ripple-*")
 	if err != nil {
-		return "", fmt.Errorf("temp dir: %w", err)
+		return fmt.Errorf("temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -40,24 +40,19 @@ func Execute(source string) (string, error) {
 	binFile := filepath.Join(tmpDir, "out")
 
 	if err := os.WriteFile(irFile, []byte(ir), 0644); err != nil {
-		return "", fmt.Errorf("write IR: %w", err)
+		return fmt.Errorf("write IR: %w", err)
 	}
 
 	clangCmd := exec.Command("clang", clangArgs(irFile, binFile)...)
-	var clangStderr bytes.Buffer
-	clangCmd.Stderr = &clangStderr
 	if err := clangCmd.Run(); err != nil {
-		return "", fmt.Errorf("compile: %w\n%s", err, clangStderr.String())
+		return fmt.Errorf("compile error: %w", err)
 	}
 
-	var out bytes.Buffer
 	runCmd := exec.Command(binFile)
-	runCmd.Stdout = &out
-	if err := runCmd.Run(); err != nil {
-		return "", fmt.Errorf("execute: %w", err)
-	}
+	runCmd.Stdout = stdout    // Pipe binary stdout to our passed-in writer
+	runCmd.Stderr = os.Stderr // Keep snitches going to stderr
 
-	return out.String(), nil
+	return runCmd.Run()
 }
 
 // clangArgs builds the argument list for clang, adding the macOS SDK sysroot
