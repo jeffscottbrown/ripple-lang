@@ -286,14 +286,10 @@ func TestCompiler_Analysis(t *testing.T) {
 		code := `["circle of friends"]
 jerry: { "Jerry" "Garcia" }`
 
-		prog, err := parser.Parse(code)
-		require.NoError(t, err)
-
-		c := codegen.New()
-		_, err = c.Compile(prog)
+		_, err := parser.Parse(code)
 
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "cannot be a collection")
+		assert.ErrorContains(t, err, `unexpected token "{"`)
 	})
 
 	t.Run("Reject unknown artist property", func(t *testing.T) {

@@ -27,28 +27,30 @@ type Section struct {
 	Albums  *AlbumsSection          `| @@`
 	Jam     *JamSection             `| @@`
 }
-
 type CircleOfFriendsSection struct {
-	Name    string   `"[" @"circle of friends" "]" Newline*`
-	Entries []*Entry `( @@ Newline* )*`
+	Name    string         `"[" @"circle of friends" "]" Newline*`
+	Entries []*FriendEntry `( @@ Newline* )*`
 }
 
 type AlbumsSection struct {
-	Name    string   `"[" @"albums" "]" Newline*`
-	Entries []*Entry `( @@ Newline* )*`
+	Name    string        `"[" @"albums" "]" Newline*`
+	Entries []*AlbumEntry `( @@ Newline* )*`
 }
 
+type FriendEntry struct {
+	Pos   lexer.Position
+	Key   string `@Ident ":"`
+	Value string `@String`
+}
+
+type AlbumEntry struct {
+	Pos        lexer.Position
+	Key        string   `@Ident ":"`
+	Collection []string `"{" Newline* @String* (Newline* @String)* Newline* "}"`
+}
 type JamSection struct {
 	Name       string       `"[" @"jam" "]" Newline*`
 	Statements []*Statement `( @@ Newline* )*`
-}
-
-type Entry struct {
-	Pos   lexer.Position
-	Key   string `@Ident ":"`
-	Value string ` ( @String `
-	// Use Newline* to allow albums to be listed on multiple lines
-	Collection []string ` | "{" Newline* @String* (Newline* @String)* Newline* "}" ) `
 }
 
 type Statement struct {

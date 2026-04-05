@@ -84,9 +84,6 @@ func (c *Compiler) collectData(prog *ast.Program) error {
 				return fmt.Errorf("%w: [%s]", ErrDuplicateSection, name)
 			}
 			for _, e := range sec.Friends.Entries {
-				if len(e.Collection) > 0 {
-					return fmt.Errorf("%w: %s", ErrInvalidFriend, e.Key)
-				}
 				c.names[e.Key] = e.Value
 			}
 		case sec.Albums != nil:
