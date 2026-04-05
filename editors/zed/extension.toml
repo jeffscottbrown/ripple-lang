@@ -1,6 +1,6 @@
 id = "ripple"
 name = "Ripple"
-version = "0.1.0"
+version = "0.4.9"
 schema_version = 1
 description = "Ripple language support for Zed: syntax highlighting, bracket matching, and auto-indent for .ripple files."
 authors = ["Ripple Language Contributors"]
@@ -8,4 +8,5 @@ repository = "https://github.com/jeffscottbrown/ripple-lang"
 
 [grammars.ripple]
 repository = "https://github.com/jeffscottbrown/ripple-lang"
-commit = "efda373c7fe9b04f7f045409ea94de0849719da7"
+rev = "<SHA of the root repo commit you want Zed to use>"
+path = "editors/zed/grammars/ripple"

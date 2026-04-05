@@ -1,10 +1,10 @@
-; ── Section headers ──────────────────────────────────────────────────────────
-; [circle of friends]  sections are the top-level structural unit.
-; Highlight the bracketed name like a module/namespace.
+; ── Section headers (make these VERY obvious for debugging) ───────────────────
 
 (section_header "[" @punctuation.bracket)
 (section_header "]" @punctuation.bracket)
-(section_header (string_literal) @module)
+
+; highlight section names strongly so they stand out
+(section_header (identifier) @keyword)
 
 ; ── Control-flow keywords ────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@
 "say"     @keyword
 "snitch"  @keyword
 
-; ── Operators (all keyword-based in Ripple) ──────────────────────────────────
+; ── Operators ────────────────────────────────────────────────────────────────
 
 (operator) @keyword.operator
 
@@ -28,10 +28,11 @@
 (boolean_literal "harsh"     @constant.builtin)
 
 ; ── String literals ──────────────────────────────────────────────────────────
+; keep these, but they should NOT override section headers now
 
 (string_literal) @string
 
-; ── Attribute access  (person.name, person.albumcount) ───────────────────────
+; ── Attribute access ─────────────────────────────────────────────────────────
 
 (attribute
   object:   (identifier) @variable
@@ -44,8 +45,6 @@
   target: (identifier) @variable)
 
 ; ── Data-section entry keys ──────────────────────────────────────────────────
-; Highlight  jerry: "…"  and  jerry: { … }  key identifiers distinctly so
-; developers can quickly scan the data sections.
 
 (entry
   key: (identifier) @variable.special)
@@ -55,9 +54,6 @@
 (collection "{" @punctuation.bracket)
 (collection "}" @punctuation.bracket)
 
-; ── Fall-through ─────────────────────────────────────────────────────────────
-; Any identifier not captured by a more specific rule above (e.g. a bare
-; variable reference on the right-hand side of `becomes`) gets the generic
-; variable colour.
+; ── Generic identifiers LAST (so they don't override header styling) ─────────
 
 (identifier) @variable

@@ -46,11 +46,10 @@
           "value": "["
         },
         {
-          "type": "FIELD",
-          "name": "name",
+          "type": "REPEAT1",
           "content": {
             "type": "SYMBOL",
-            "name": "string_literal"
+            "name": "identifier"
           }
         },
         {
