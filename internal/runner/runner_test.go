@@ -34,6 +34,7 @@ func skipIfNoClang(t *testing.T) {
 //   - say statement with a double-quoted string literal
 //   - runner.Execute returns the captured stdout including the trailing newline
 func TestExecute_Say_StringLiteral(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -55,6 +56,7 @@ say "hello world"
 //   - 'suppose … enough' conditional with 'vibes_like' equality operator
 //   - then-body executes when condition is satisfied
 func TestExecute_Assignment_Copacetic_TrueBranch(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -78,6 +80,7 @@ enough
 //   - then-body is suppressed when the condition evaluates to false
 //   - program produces empty stdout when no say is reached
 func TestExecute_Assignment_Harsh_FalseBranch(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -102,6 +105,7 @@ enough
 //   - comparing a variable against a boolean literal
 //   - then-body executes when harshing_the_vibe_of comparison yields true
 func TestExecute_HarshingTheVibeOf_NotEqual(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -125,6 +129,7 @@ enough
 //   - then-branch taken when condition is true
 //   - otherwise-branch is not reached when condition is true
 func TestExecute_Otherwise_TrueBranch(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -149,6 +154,7 @@ enough
 //   - otherwise-branch taken when condition evaluates to false
 //   - then-body is skipped when otherwise-branch is selected
 func TestExecute_Otherwise_FalseBranch(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -175,6 +181,7 @@ enough
 //   - '.albumcount' attribute resolves to the number of albums at compile time
 //   - 'louder_than' keyword as the greater-than (>) operator
 func TestExecute_LouderThan_AlbumCount(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -205,6 +212,7 @@ enough
 //   - numeric attribute comparison produces a boolean result
 //   - then-body executes when quieter_than comparison yields true
 func TestExecute_QuieterThan_AlbumCount(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -235,6 +243,7 @@ enough
 //   - 'person.albums has "title"' syntax — left side is an Attr, right is a string
 //   - then-body executes when the album is found in the collection
 func TestExecute_Has_Present(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -263,6 +272,7 @@ enough
 //   - otherwise-branch selected when has-check yields false
 //   - compile-time resolution means absent titles cost zero runtime branches
 func TestExecute_Has_Absent(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -292,6 +302,7 @@ enough
 //   - 'person.name' attribute access in a say statement
 //   - name string is interned as an LLVM global and passed to printf at runtime
 func TestExecute_NameResolution(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -318,6 +329,7 @@ say jerry.name
 //   - mixing string literals and attribute references in a single say
 //   - all arguments land on the same output line without intervening spaces
 func TestExecute_MultipleArgs_SameLine(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -343,6 +355,7 @@ say "Hello, " jerry.name "!"
 //   - using a comparison-derived variable as the condition of a suppose block
 //   - 'vibes_like copacetic' testing a variable known to hold a comparison result
 func TestExecute_Variable_From_Comparison(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -419,6 +432,7 @@ enough
 //	"Golden vibes detected"
 //	"Not muddy at all"
 func TestExecute_CompleteProgram(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -483,6 +497,7 @@ enough
 //   - suppose condition using 'and' between two boolean variables
 //   - then-body executes when both sides of 'and' are copacetic
 func TestExecute_And_BothTrue(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -507,6 +522,7 @@ enough
 //   - suppose condition using 'or' between a harsh and a copacetic variable
 //   - then-body executes when at least one side of 'or' is copacetic
 func TestExecute_Or_OneFalse(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
@@ -531,6 +547,7 @@ enough
 //   - then-body is suppressed when 'and' condition evaluates to false
 //   - program produces empty stdout when no say statement is reached
 func TestExecute_And_OneFalse(t *testing.T) {
+	t.Parallel()
 	skipIfNoClang(t)
 
 	src := `
