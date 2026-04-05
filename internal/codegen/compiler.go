@@ -10,6 +10,8 @@ import (
 	"github.com/jeffscottbrown/ripple-lang/internal/ast"
 )
 
+const targetOSDarwin = "darwin"
+
 // typedVal pairs an LLVM value reference with its LLVM type string.
 type typedVal struct {
 	v string // value reference, e.g. "%tmp.3" or "42"
@@ -99,7 +101,7 @@ func (c *Compiler) Compile(prog *ast.Program) (string, error) {
 	out.WriteString("declare i32 @printf(i8* nocapture, ...)\n")
 	out.WriteString("declare i32 @fprintf(i8*, i8* nocapture, ...)\n")
 
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == targetOSDarwin {
 		out.WriteString("@__stderrp = external global i8*\n\n")
 	} else {
 		out.WriteString("@stderr = external global i8*\n\n")
@@ -252,7 +254,7 @@ func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
 
 	if isStderr {
 		symbol := "@stderr"
-		if runtime.GOOS == "darwin" {
+		if runtime.GOOS == targetOSDarwin {
 			symbol = "@__stderrp"
 		}
 
@@ -334,7 +336,7 @@ func (c *Compiler) emitConditional(cond *ast.Conditional) {
 func (c *Compiler) emitExpr(expr *ast.Expression) string {
 	// The "has" operator is resolved entirely at compile time against c.albums;
 	// no LLVM instructions are emitted.
-	if expr.Op == "has" {
+	if expr.Op == "has" { //nolint:nestif
 		var artistName string
 		if expr.Left.Ident != nil {
 			artistName = *expr.Left.Ident
@@ -464,7 +466,7 @@ func (c *Compiler) nextTmp() string {
 // or an empty string on unrecognised platforms.
 func targetTriple() string {
 	switch runtime.GOOS {
-	case "darwin":
+	case targetOSDarwin:
 		if runtime.GOARCH == "amd64" {
 			return "x86_64-apple-darwin"
 		}
