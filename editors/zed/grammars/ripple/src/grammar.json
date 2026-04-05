@@ -131,6 +131,10 @@
         {
           "type": "SYMBOL",
           "name": "say_statement"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "snitch_statement"
         }
       ]
     },
@@ -228,6 +232,30 @@
           {
             "type": "STRING",
             "value": "say"
+          },
+          {
+            "type": "REPEAT1",
+            "content": {
+              "type": "FIELD",
+              "name": "argument",
+              "content": {
+                "type": "SYMBOL",
+                "name": "expression"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "snitch_statement": {
+      "type": "PREC_RIGHT",
+      "value": 0,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": "snitch"
           },
           {
             "type": "REPEAT1",

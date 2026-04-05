@@ -242,6 +242,22 @@
     }
   },
   {
+    "type": "snitch_statement",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "source_file",
     "named": true,
     "fields": {},
@@ -274,6 +290,10 @@
         },
         {
           "type": "say_statement",
+          "named": true
+        },
+        {
+          "type": "snitch_statement",
           "named": true
         }
       ]
@@ -372,6 +392,10 @@
   },
   {
     "type": "say",
+    "named": false
+  },
+  {
+    "type": "snitch",
     "named": false
   },
   {

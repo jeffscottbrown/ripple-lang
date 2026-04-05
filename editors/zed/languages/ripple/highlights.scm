@@ -16,6 +16,7 @@
 
 "becomes" @keyword
 "say"     @keyword
+"snitch"  @keyword
 
 ; ── Operators (all keyword-based in Ripple) ──────────────────────────────────
 

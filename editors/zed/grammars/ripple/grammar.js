@@ -132,7 +132,12 @@ module.exports = grammar({
 
     /** Any single executable statement. */
     statement: ($) =>
-      choice($.assignment_statement, $.conditional_statement, $.say_statement),
+      choice(
+        $.assignment_statement,
+        $.conditional_statement,
+        $.say_statement,
+        $.snitch_statement,
+      ),
 
     /**
      * Bind the result of an expression to an identifier.
@@ -173,6 +178,17 @@ module.exports = grammar({
      */
     say_statement: ($) =>
       prec.right(seq("say", repeat1(field("argument", $.expression)))),
+
+    /**
+     * Print one or more expressions to stderr.
+     *   snitch jerry.name " has more albums than " janis.name
+     *
+     * prec.right resolves the shift-reduce conflict that arises because a
+     * bare identifier can be both an expression argument and the start of a
+     * new section item — right-associativity prefers shifting (greedy).
+     */
+    snitch_statement: ($) =>
+      prec.right(seq("snitch", repeat1(field("argument", $.expression)))),
 
     // ── Expressions ───────────────────────────────────────────────────────────
 

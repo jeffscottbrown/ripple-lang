@@ -8,4 +8,4 @@ repository = "https://github.com/jeffscottbrown/ripple-lang"
 
 [grammars.ripple]
 repository = "https://github.com/jeffscottbrown/ripple-lang"
-commit = "f5bfa73ba25489f5f3d0a864625a3411fc812fbd"
+commit = "efda373c7fe9b04f7f045409ea94de0849719da7"
