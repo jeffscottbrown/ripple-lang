@@ -4,7 +4,6 @@ linters:
   disable:
     - cyclop
     - depguard
-    - dupl
     - dupword
     - errcheck
     - exhaustruct
@@ -19,7 +18,6 @@ linters:
     - nlreturn
     - noctx
     - noinlineerr
-    - nonamedreturns
     - paralleltest
     - perfsprint
     - prealloc
