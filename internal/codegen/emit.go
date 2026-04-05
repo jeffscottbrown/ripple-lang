@@ -11,7 +11,6 @@ import (
 	"github.com/llir/llvm/ir/value"
 )
 
-// nolint:ireturn
 func (c *Compiler) emitStatements(stmts []*ast.Statement, block *ir.Block) *ir.Block {
 	currentBlock := block
 	for _, stmt := range stmts {
@@ -65,9 +64,9 @@ func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool, bloc
 	}
 }
 
-// nolint:ireturn
+//nolint:ireturn
 func (c *Compiler) emitExpression(expr *ast.Expression, block *ir.Block) value.Value {
-	if expr.Op == "has" {
+	if expr.Op == "has" { //nolint:nestif
 		artist := ""
 		if expr.Left.Attr != nil {
 			artist = expr.Left.Attr.Name
@@ -110,7 +109,7 @@ func (c *Compiler) emitExpression(expr *ast.Expression, block *ir.Block) value.V
 	return constant.NewInt(types.I1, 0)
 }
 
-// nolint:ireturn
+//nolint:ireturn
 func (c *Compiler) emitTerm(term *ast.Term, block *ir.Block) value.Value {
 	switch {
 	case term.Str != nil:

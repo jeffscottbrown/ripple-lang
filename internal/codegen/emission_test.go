@@ -105,7 +105,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 }
 
-// Helper to reduce boilerplate in emission tests
+// Helper to reduce boilerplate in emission tests.
 func compileOrFatal(t *testing.T, code string) string {
 	t.Helper()
 	prog, err := parser.Parse(code)
