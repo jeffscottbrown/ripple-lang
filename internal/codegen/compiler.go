@@ -2,232 +2,224 @@ package codegen
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
-	"slices"
 	"strings"
 
-	"github.com/alecthomas/participle/v2"
 	"github.com/jeffscottbrown/ripple-lang/internal/ast"
 )
 
 const targetOSDarwin = "darwin"
 
-// typedVal pairs an LLVM value reference with its LLVM type string.
+// Static error definitions to satisfy err113.
+var (
+	ErrDuplicateSection = errors.New("duplicate section")
+	ErrInvalidFriend    = errors.New("artist cannot be a collection in the circle of friends")
+	ErrUndefined        = errors.New("variable for artist is not defined")
+	ErrUnknownArtist    = errors.New("artist is not in your circle of friends")
+	ErrInvalidProperty  = errors.New("artist does not have that property")
+)
+
 type typedVal struct {
-	v string // value reference, e.g. "%tmp.3" or "42"
-	t string // type string, e.g. "i1", "i32", "i8*"
+	t string
+	v string
 }
 
-// Compiler translates a Ripple AST into LLVM IR text.
 type Compiler struct {
-	globals bytes.Buffer        // global string constant declarations
-	fn      bytes.Buffer        // main() body
-	strs    map[string]string   // interned string literals → global variable name
-	vars    map[string]bool     // variables tracking (used for alloca and validation)
-	names   map[string]string   // populated from "circle of friends" section
-	albums  map[string][]string // populated from "albums" section
-	strIdx  int                 // next index for naming .str globals
-	condIdx int                 // next index for naming conditional basic block labels
-	tmpIdx  int                 // next index for naming unnamed temporaries
+	fn      strings.Builder
+	globals strings.Builder
+	names   map[string]string
+	albums  map[string][]string
+	vars    map[string]bool
+	tmpIdx  int
+	strIdx  int
 }
 
-// NewCompiler returns a fresh, ready-to-use Compiler.
-func NewCompiler() *Compiler {
-	return &Compiler{}
-}
-
-// Compile translates prog into an LLVM IR module and returns the module as a
-// string.  The compiler may be reused; all state is reset on each call.
-func (c *Compiler) Compile(prog *ast.Program) (string, error) {
-	c.globals.Reset()
-	c.fn.Reset()
-	c.strs = make(map[string]string)
-	c.vars = make(map[string]bool)
-	c.names = make(map[string]string)
-	c.albums = make(map[string][]string)
-	c.strIdx = 0
-	c.condIdx = 0
-	c.tmpIdx = 0
-
-	// PHASE 1: Pre-pass: populate names and albums from their respective sections before
-	// any code is emitted, so that jam-block statements can reference them.
-	for _, sec := range prog.Sections {
-		switch sec.Name {
-		case "circle of friends":
-			for _, e := range sec.Entries {
-				// Semantic Check: Circle of friends MUST be strings, not collections
-				if len(e.Collection) > 0 {
-					return "", participle.Errorf(e.Pos, "artist '%s' in 'circle of friends' cannot be a collection", e.Key)
-				}
-				c.names[e.Key] = e.Value
-			}
-		case "albums":
-			for _, e := range sec.Entries {
-				c.albums[e.Key] = e.Collection
-			}
-		}
+func New() *Compiler {
+	return &Compiler{
+		names:  make(map[string]string),
+		albums: make(map[string][]string),
+		vars:   make(map[string]bool),
 	}
+}
 
-	// PHASE 2: Semantic Analysis (The "Dry Run")
-	// This populates c.vars and checks for undefined variables/invalid properties.
-	if err := c.Validate(prog); err != nil {
+func (c *Compiler) Compile(prog *ast.Program) (string, error) {
+	c.reset()
+
+	// PHASE 1: DATA COLLECTION
+	if err := c.collectData(prog); err != nil {
 		return "", err
 	}
 
-	// PHASE 3: Reset state for Emission
-	// We clear vars so emitAssignment knows to create 'alloca' instructions.
-	c.vars = make(map[string]bool)
-
-	// PHASE 4: Code Generation
-	c.fn.WriteString("entry:\n")
+	// PHASE 2: SEMANTIC VALIDATION
 	for _, sec := range prog.Sections {
-		if sec.Name == "jam" {
-			c.emitStatements(sec.Statements)
+		if sec.Jam != nil {
+			if err := c.validateStatements(sec.Jam.Statements, make(map[string]bool)); err != nil {
+				return "", err
+			}
 		}
 	}
-	c.fn.WriteString("  ret i32 0\n")
 
-	// Assemble the final module: comment, globals, external decls, main().
+	// PHASE 3: IR EMISSION
+	c.fn.WriteString("define i32 @main() {\nentry:\n")
+	for _, sec := range prog.Sections {
+		if sec.Jam != nil {
+			c.emitStatements(sec.Jam.Statements)
+		}
+	}
+	c.fn.WriteString("  ret i32 0\n}\n")
+
+	return c.assembleModule(), nil
+}
+
+func (c *Compiler) collectData(prog *ast.Program) error {
+	seen := make(map[string]bool)
+	for _, sec := range prog.Sections {
+		var name string
+		switch {
+		case sec.Friends != nil:
+			name = "circle of friends"
+			if seen[name] {
+				return fmt.Errorf("%w: [%s]", ErrDuplicateSection, name)
+			}
+			for _, e := range sec.Friends.Entries {
+				if len(e.Collection) > 0 {
+					return fmt.Errorf("%w: %s", ErrInvalidFriend, e.Key)
+				}
+				c.names[e.Key] = e.Value
+			}
+		case sec.Albums != nil:
+			name = "albums"
+			if seen[name] {
+				return fmt.Errorf("%w: [%s]", ErrDuplicateSection, name)
+			}
+			for _, e := range sec.Albums.Entries {
+				c.albums[e.Key] = e.Collection
+			}
+		case sec.Jam != nil:
+			name = "jam"
+			if seen[name] {
+				return fmt.Errorf("%w: [%s]", ErrDuplicateSection, name)
+			}
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
+func (c *Compiler) validateStatements(stmts []*ast.Statement, localVars map[string]bool) error {
+	for _, stmt := range stmts {
+		switch {
+		case stmt.Assignment != nil:
+			if err := c.validateExpr(stmt.Assignment.Value, localVars); err != nil {
+				return err
+			}
+			localVars[stmt.Assignment.Target] = true
+		case stmt.Print != nil:
+			for _, arg := range stmt.Print.Args {
+				if err := c.validateExpr(arg, localVars); err != nil {
+					return err
+				}
+			}
+		case stmt.Snitch != nil:
+			for _, arg := range stmt.Snitch.Args {
+				if err := c.validateExpr(arg, localVars); err != nil {
+					return err
+				}
+			}
+		case stmt.Conditional != nil:
+			if err := c.validateExpr(stmt.Conditional.Condition, localVars); err != nil {
+				return err
+			}
+			// Recursive calls for blocks
+			if err := c.validateStatements(stmt.Conditional.Body, localVars); err != nil {
+				return err
+			}
+			if err := c.validateStatements(stmt.Conditional.Otherwise, localVars); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) validateExpr(e *ast.Expression, localVars map[string]bool) error {
+	if err := c.validateTerm(e.Left, localVars); err != nil {
+		return err
+	}
+	if e.Right != nil {
+		return c.validateTerm(e.Right, localVars)
+	}
+	return nil
+}
+
+func (c *Compiler) validateTerm(t *ast.Term, localVars map[string]bool) error {
+	if t.Ident != nil {
+		// An identifier is valid if it's a local variable OR a known artist.
+		_, isVar := localVars[*t.Ident]
+		_, isArtist := c.names[*t.Ident]
+
+		if !isVar && !isArtist {
+			return fmt.Errorf("%w: %s", ErrUndefined, *t.Ident)
+		}
+	}
+	if t.Attr != nil {
+		if _, exists := c.names[t.Attr.Name]; !exists {
+			return fmt.Errorf("%w: %s", ErrUnknownArtist, t.Attr.Name)
+		}
+		props := map[string]bool{"name": true, "albums": true, "albumcount": true}
+		if !props[t.Attr.Prop] {
+			return fmt.Errorf("%w: %s", ErrInvalidProperty, t.Attr.Prop)
+		}
+	}
+	return nil
+}
+
+func (c *Compiler) assembleModule() string {
 	var out bytes.Buffer
 	out.WriteString("; Generated by the Ripple compiler\n\n")
-	if triple := targetTriple(); triple != "" {
-		fmt.Fprintf(&out, "target triple = \"%s\"\n\n", triple)
-	}
+	fmt.Fprintf(&out, "target triple = \"%s\"\n\n", targetTriple())
 	out.WriteString(c.globals.String())
-	if c.globals.Len() > 0 {
-		out.WriteString("\n")
-	}
-
+	out.WriteString("\n")
 	out.WriteString("declare i32 @printf(i8* nocapture, ...)\n")
 	out.WriteString("declare i32 @fprintf(i8*, i8* nocapture, ...)\n")
+	out.WriteString("declare i32 @fflush(i8*)\n")
 
 	if runtime.GOOS == targetOSDarwin {
 		out.WriteString("@__stderrp = external global i8*\n\n")
 	} else {
 		out.WriteString("@stderr = external global i8*\n\n")
 	}
-	out.WriteString("define i32 @main() {\n")
 	out.WriteString(c.fn.String())
-	out.WriteString("}\n")
-	return out.String(), nil
+	return out.String()
 }
 
-// ── Semantic Validation ──────────────────────────────────────────────────────
-
-func (c *Compiler) Validate(prog *ast.Program) error {
-	for _, sec := range prog.Sections {
-		if sec.Name == "jam" {
-			if err := c.validateStatements(sec.Statements); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func (c *Compiler) reset() {
+	c.fn.Reset()
+	c.globals.Reset()
+	c.tmpIdx = 0
+	c.strIdx = 0
+	c.names = make(map[string]string)
+	c.albums = make(map[string][]string)
+	c.vars = make(map[string]bool)
 }
-
-func (c *Compiler) validateStatements(stmts []*ast.Statement) error {
-	for _, s := range stmts {
-		if err := c.validateStatement(s); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *Compiler) validateStatement(s *ast.Statement) error {
-	switch {
-	case s.Assignment != nil:
-		if err := c.validateExpression(s.Assignment.Value); err != nil {
-			return err
-		}
-		// Record definition for top-to-bottom checking
-		c.vars[s.Assignment.Target] = true
-		return nil
-
-	case s.Conditional != nil:
-		if err := c.validateExpression(s.Conditional.Condition); err != nil {
-			return err
-		}
-		if err := c.validateStatements(s.Conditional.Body); err != nil {
-			return err
-		}
-		return c.validateStatements(s.Conditional.Otherwise)
-
-	case s.Print != nil:
-		for _, arg := range s.Print.Args {
-			if err := c.validateExpression(arg); err != nil {
-				return err
-			}
-		}
-	case s.Snitch != nil:
-		for _, arg := range s.Snitch.Args {
-			if err := c.validateExpression(arg); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (c *Compiler) validateExpression(expr *ast.Expression) error {
-	if err := c.validateTerm(expr.Left); err != nil {
-		return err
-	}
-	if expr.Right != nil {
-		return c.validateTerm(expr.Right)
-	}
-	return nil
-}
-
-func (c *Compiler) validateTerm(t *ast.Term) error {
-	switch {
-	case t.Attr != nil:
-		// ... existing attr validation ...
-		return c.validateAttr(t.Attr)
-
-	case t.Ident != nil:
-		name := *t.Ident
-		_, isVariable := c.vars[name]
-		_, isArtist := c.names[name] // Check the global section too!
-
-		if !isVariable && !isArtist {
-			return participle.Errorf(t.Pos, "variable or artist '%s' is not defined", name)
-		}
-	}
-	return nil
-}
-
-func (c *Compiler) validateAttr(attr *ast.Attr) error {
-	if _, exists := c.names[attr.Name]; !exists {
-		return participle.Errorf(attr.Pos, "artist '%s' is not in your circle of friends", attr.Name)
-	}
-	switch attr.Prop {
-	case "name", "albumcount", "albums":
-		return nil
-	default:
-		return participle.Errorf(attr.Pos, "artist '%s' does not have a property named '%s'", attr.Name, attr.Prop)
-	}
-}
-
-// ── Emission ──────────────────────────────────────────────────────────────────
 
 func (c *Compiler) emitStatements(stmts []*ast.Statement) {
-	for _, s := range stmts {
-		c.emitStatement(s)
-	}
-}
-
-func (c *Compiler) emitStatement(s *ast.Statement) {
-	switch {
-	case s.Print != nil:
-		c.emitOutput(s.Print.Args, false)
-	case s.Snitch != nil:
-		c.emitOutput(s.Snitch.Args, true)
-	case s.Assignment != nil:
-		c.emitAssignment(s.Assignment)
-	case s.Conditional != nil:
-		c.emitConditional(s.Conditional)
+	for _, stmt := range stmts {
+		switch {
+		case stmt.Print != nil:
+			c.emitOutput(stmt.Print.Args, false)
+		case stmt.Snitch != nil:
+			c.emitOutput(stmt.Snitch.Args, true)
+		case stmt.Assignment != nil:
+			val := c.emitExpression(stmt.Assignment.Value)
+			c.vars[stmt.Assignment.Target] = true
+			fmt.Fprintf(&c.fn, "  %%%s = alloca i1, align 1\n", stmt.Assignment.Target)
+			fmt.Fprintf(&c.fn, "  store i1 %s, i1* %%%s, align 1\n", val.v, stmt.Assignment.Target)
+		case stmt.Conditional != nil:
+			c.emitConditional(stmt.Conditional)
+		}
 	}
 }
 
@@ -239,16 +231,16 @@ func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
 
 	var fmtBuf strings.Builder
 	for _, a := range args {
-		switch a.t {
-		case "i8*":
+		if a.t == "i8*" {
 			fmtBuf.WriteString("%s")
-		case "i1", "i32":
+		} else {
 			fmtBuf.WriteString("%d")
 		}
 	}
-	fmtBuf.WriteByte('\n')
-	fmtName, fmtSize := c.internString(fmtBuf.String())
+	fmtBuf.WriteString("\\0A\\00")
+	fmtStr := fmtBuf.String()
 
+	fmtName, fmtSize := c.internString(fmtStr)
 	fmtTmp := c.nextTmp()
 	fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 		fmtTmp, fmtSize, fmtSize, fmtName)
@@ -258,7 +250,6 @@ func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
 		if runtime.GOOS == targetOSDarwin {
 			symbol = "@__stderrp"
 		}
-
 		errPtr := c.nextTmp()
 		fmt.Fprintf(&c.fn, "  %%%s = load i8*, i8** %s, align 8\n", errPtr, symbol)
 		fmt.Fprintf(&c.fn, "  call i32 (i8*, i8*, ...) @fprintf(i8* %%%s, i8* %%%s", errPtr, fmtTmp)
@@ -270,239 +261,149 @@ func (c *Compiler) emitOutput(expressions []*ast.Expression, isStderr bool) {
 		fmt.Fprintf(&c.fn, ", %s %s", a.t, a.v)
 	}
 	c.fn.WriteString(")\n")
-}
 
-// emitAssignment handles `target becomes expr`.
-func (c *Compiler) emitAssignment(a *ast.Assignment) {
-	// Emit alloca only once per variable name.
-	if !c.vars[a.Target] {
-		fmt.Fprintf(&c.fn, "  %%%s = alloca i1, align 1\n", a.Target)
-		c.vars[a.Target] = true
+	if !isStderr {
+		fmt.Fprintf(&c.fn, "  call i32 @fflush(i8* null)\n")
 	}
-	val := c.emitExpr(a.Value)
-	fmt.Fprintf(&c.fn, "  store i1 %s, i1* %%%s, align 1\n", val, a.Target)
 }
 
-// emitConditional handles `suppose cond body [otherwise body] enough`.
-//
-// Block layout (no else):
-//
-//	<current block>  →  br cond, then.N, merge.N
-//	then.N           →  body; br merge.N
-//	merge.N          →  <fall-through for subsequent statements>
-//
-// Block layout (with else):
-//
-//	<current block>  →  br cond, then.N, else.N
-//	then.N           →  body; br merge.N
-//	else.N           →  otherwise; br merge.N
-//	merge.N          →  <fall-through for subsequent statements>
 func (c *Compiler) emitConditional(cond *ast.Conditional) {
-	idx := c.condIdx
-	c.condIdx++
+	labelIdx := c.tmpIdx
+	c.tmpIdx++
 
-	thenLabel := fmt.Sprintf("then.%d", idx)
-	mergeLabel := fmt.Sprintf("merge.%d", idx)
+	res := c.emitExpression(cond.Condition)
+	thenLabel := fmt.Sprintf("then.%d", labelIdx)
+	elseLabel := fmt.Sprintf("else.%d", labelIdx)
+	mergeLabel := fmt.Sprintf("merge.%d", labelIdx)
 
-	condVal := c.emitExpr(cond.Condition)
+	if len(cond.Otherwise) > 0 {
+		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", res.v, thenLabel, elseLabel)
+	} else {
+		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", res.v, thenLabel, mergeLabel)
+	}
 
-	if cond.Otherwise != nil {
-		elseLabel := fmt.Sprintf("else.%d", idx)
-		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", condVal, thenLabel, elseLabel)
+	fmt.Fprintf(&c.fn, "%s:\n", thenLabel)
+	c.emitStatements(cond.Body)
+	fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
 
-		fmt.Fprintf(&c.fn, "%s:\n", thenLabel)
-		c.emitStatements(cond.Body)
-		fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
-
+	if len(cond.Otherwise) > 0 {
 		fmt.Fprintf(&c.fn, "%s:\n", elseLabel)
 		c.emitStatements(cond.Otherwise)
 		fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
-	} else {
-		fmt.Fprintf(&c.fn, "  br i1 %s, label %%%s, label %%%s\n", condVal, thenLabel, mergeLabel)
-
-		fmt.Fprintf(&c.fn, "%s:\n", thenLabel)
-		c.emitStatements(cond.Body)
-		fmt.Fprintf(&c.fn, "  br label %%%s\n", mergeLabel)
 	}
-
-	// Subsequent instructions are emitted into the merge block.
 	fmt.Fprintf(&c.fn, "%s:\n", mergeLabel)
 }
 
-// ── Expression emission ───────────────────────────────────────────────────────
-
-// emitExpr evaluates expr in the current basic block, emitting any required
-// instructions, and returns a plain string for the LLVM i1 result (a named
-// register such as "%tmp.3" or a bare literal "0"/"1").
-func (c *Compiler) emitExpr(expr *ast.Expression) string {
-	// The "has" operator is resolved entirely at compile time against c.albums;
-	// no LLVM instructions are emitted.
-	if expr.Op == "has" { //nolint:nestif
-		var artistName string
-		if expr.Left.Ident != nil {
-			artistName = *expr.Left.Ident
-		} else if expr.Left.Attr != nil {
-			artistName = expr.Left.Attr.Name
-		}
-		if expr.Right != nil && expr.Right.Str != nil {
-			want := *expr.Right.Str
-			if slices.Contains(c.albums[artistName], want) {
-				return "1"
-			}
-		}
-		return "0"
-	}
-
+func (c *Compiler) emitExpression(expr *ast.Expression) typedVal {
 	left := c.emitTerm(expr.Left)
 	if expr.Op == "" {
-		return left.v
+		return left
 	}
-
 	right := c.emitTerm(expr.Right)
-	result := c.nextTmp()
+	tmp := c.nextTmp()
+
 	switch expr.Op {
-	case "vibes_like":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp eq %s %s, %s\n", result, left.t, left.v, right.v)
-	case "harshing_the_vibe_of":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp ne %s %s, %s\n", result, left.t, left.v, right.v)
 	case "louder_than":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp sgt %s %s, %s\n", result, left.t, left.v, right.v)
+		fmt.Fprintf(&c.fn, "  %%%s = icmp sgt %s %s, %s\n", tmp, left.t, left.v, right.v)
 	case "quieter_than":
-		fmt.Fprintf(&c.fn, "  %%%s = icmp slt %s %s, %s\n", result, left.t, left.v, right.v)
+		fmt.Fprintf(&c.fn, "  %%%s = icmp slt %s %s, %s\n", tmp, left.t, left.v, right.v)
+	case "vibes_like":
+		fmt.Fprintf(&c.fn, "  %%%s = icmp eq %s %s, %s\n", tmp, left.t, left.v, right.v)
+	case "harshing_the_vibe_of":
+		fmt.Fprintf(&c.fn, "  %%%s = icmp ne %s %s, %s\n", tmp, left.t, left.v, right.v)
 	case "and":
-		fmt.Fprintf(&c.fn, "  %%%s = and i1 %s, %s\n", result, left.v, right.v)
+		fmt.Fprintf(&c.fn, "  %%%s = and i1 %s, %s\n", tmp, left.v, right.v)
 	case "or":
-		fmt.Fprintf(&c.fn, "  %%%s = or i1 %s, %s\n", result, left.v, right.v)
-	default:
-		// Unknown operator – conservatively return false.
-		return "0"
-	}
-
-	return "%" + result
-}
-
-// emitAttr materialises an attribute access (e.g. jerry.name, jerry.albumcount)
-// and returns a typed value.
-//
-//   - .name      → look up c.names, intern the string, return i8* GEP result
-//   - .albumcount → len(c.albums[name]) as a compile-time i32 constant
-//   - anything else → i32 zero
-func (c *Compiler) emitAttr(attr *ast.Attr) typedVal {
-	switch attr.Prop {
-	case "name":
-		s := c.names[attr.Name]
-		name, size := c.internString(s)
-		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
-			tmp, size, size, name)
-		return typedVal{"%" + tmp, "i8*"}
-
-	case "albumcount":
-		n := len(c.albums[attr.Name])
-		return typedVal{fmt.Sprintf("%d", n), "i32"}
-
-	default:
-		return typedVal{"0", "i32"}
-	}
-}
-
-// emitTerm emits any instructions needed to materialise a Term's value and
-// returns the resulting typed LLVM value.
-func (c *Compiler) emitTerm(t *ast.Term) typedVal {
-	switch {
-	case t.Bool != nil:
-		if *t.Bool == "copacetic" {
-			return typedVal{"1", "i1"}
+		fmt.Fprintf(&c.fn, "  %%%s = or i1 %s, %s\n", tmp, left.v, right.v)
+	case "has":
+		var artist string
+		// Safety check: is Left an Attr (jerry.albums)?
+		if expr.Left.Attr != nil {
+			artist = expr.Left.Attr.Name
+		} else if expr.Left.Ident != nil {
+			// Or is it a direct Ident (jerry)?
+			artist = *expr.Left.Ident
 		}
-		return typedVal{"0", "i1"}
 
-	case t.Ident != nil:
-		tmp := c.nextTmp()
-		fmt.Fprintf(&c.fn, "  %%%s = load i1, i1* %%%s, align 1\n", tmp, *t.Ident)
-		return typedVal{"%" + tmp, "i1"}
+		// Safety check: is Right a string literal ("A")?
+		if artist != "" && expr.Right != nil && expr.Right.Str != nil {
+			target := *expr.Right.Str
+			list := c.albums[artist]
+			found := "0"
+			for _, album := range list {
+				if album == target {
+					found = "1"
+					break
+				}
+			}
+			return typedVal{"i1", found}
+		}
+		// If the structure is weird, don't panic, just return false (harsh)
+		return typedVal{"i1", "0"}
+	}
+	return typedVal{"i1", "%" + tmp}
+}
 
-	case t.Str != nil:
-		name, size := c.internString(*t.Str)
+func (c *Compiler) emitTerm(term *ast.Term) typedVal {
+	switch {
+	case term.Str != nil:
+		name, size := c.internString(*term.Str + "\\00")
 		tmp := c.nextTmp()
 		fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
 			tmp, size, size, name)
-		return typedVal{"%" + tmp, "i8*"}
-
-	case t.Attr != nil:
-		return c.emitAttr(t.Attr)
+		return typedVal{"i8*", "%" + tmp}
+	case term.Bool != nil:
+		val := "0"
+		if *term.Bool == "copacetic" {
+			val = "1"
+		}
+		return typedVal{"i1", val}
+	case term.Ident != nil:
+		tmp := c.nextTmp()
+		fmt.Fprintf(&c.fn, "  %%%s = load i1, i1* %%%s, align 1\n", tmp, *term.Ident)
+		return typedVal{"i1", "%" + tmp}
+	case term.Attr != nil:
+		if term.Attr.Prop == "name" {
+			val := c.names[term.Attr.Name]
+			name, size := c.internString(val + "\\00")
+			tmp := c.nextTmp()
+			fmt.Fprintf(&c.fn, "  %%%s = getelementptr inbounds [%d x i8], [%d x i8]* @%s, i32 0, i32 0\n",
+				tmp, size, size, name)
+			return typedVal{"i8*", "%" + tmp}
+		}
+		if term.Attr.Prop == "albumcount" {
+			count := len(c.albums[term.Attr.Name])
+			return typedVal{"i32", fmt.Sprintf("%d", count)}
+		}
 	}
-
-	return typedVal{"0", "i32"}
+	return typedVal{"i32", "0"}
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// internString registers s as a private LLVM string global (exactly once) and
-// returns its global name (without the leading @) together with its total byte
-// size including the null terminator.
-func (c *Compiler) internString(s string) (name string, size int) {
-	size = len(s) + 1 // +1 for the null terminator
-	if n, ok := c.strs[s]; ok {
-		return n, size
-	}
-	name = fmt.Sprintf(".str.%d", c.strIdx)
+func (c *Compiler) internString(s string) (string, int) {
+	name := fmt.Sprintf(".str.%d", c.strIdx)
 	c.strIdx++
-	c.strs[s] = name
-	fmt.Fprintf(&c.globals, "@%s = private unnamed_addr constant [%d x i8] c\"%s\\00\", align 1\n",
-		name, size, llvmEscapeString(s))
+	size := len(s)
+	size -= (strings.Count(s, "\\00") * 2)
+	size -= (strings.Count(s, "\\0A") * 2)
+	fmt.Fprintf(&c.globals, "@%s = private unnamed_addr constant [%d x i8] c\"%s\", align 1\n",
+		name, size, s)
 	return name, size
 }
 
-// nextTmp allocates and returns the next unique temporary register name
-// (without the leading %).
 func (c *Compiler) nextTmp() string {
-	name := fmt.Sprintf("tmp.%d", c.tmpIdx)
+	t := fmt.Sprintf("tmp.%d", c.tmpIdx)
 	c.tmpIdx++
-	return name
+	return t
 }
 
-// targetTriple returns the LLVM target triple for the current host platform,
-// or an empty string on unrecognised platforms.
 func targetTriple() string {
 	switch runtime.GOOS {
 	case targetOSDarwin:
 		if runtime.GOARCH == "amd64" {
 			return "x86_64-apple-darwin"
 		}
-		if runtime.GOARCH == "arm64" {
-			return "arm64-apple-darwin"
-		}
-	case "linux":
-		if runtime.GOARCH == "amd64" {
-			return "x86_64-pc-linux-gnu"
-		}
-		if runtime.GOARCH == "arm64" {
-			return "aarch64-linux-gnu"
-		}
+		return "arm64-apple-darwin"
+	default:
+		return "x86_64-unknown-linux-gnu"
 	}
-	return ""
-}
-
-// llvmEscapeString escapes a Go string for use inside an LLVM IR c"…" literal.
-func llvmEscapeString(s string) string {
-	var b strings.Builder
-	for _, ch := range []byte(s) {
-		switch ch {
-		case '\n':
-			b.WriteString("\\0A")
-		case '\r':
-			b.WriteString("\\0D")
-		case '"':
-			b.WriteString("\\22")
-		case '\\':
-			b.WriteString("\\5C")
-		default:
-			if ch < 0x20 || ch > 0x7e {
-				fmt.Fprintf(&b, "\\%02X", ch)
-			} else {
-				b.WriteByte(ch)
-			}
-		}
-	}
-	return b.String()
 }

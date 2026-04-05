@@ -11,18 +11,35 @@ var ripleLexer = lexer.MustStateful(lexer.Rules{
 		{Name: "Punct", Pattern: `[[\]{}.:]`},
 		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|snitch|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
-		{Name: "Newline", Pattern: `\r?\n`},     // Capture Newlines
-		{Name: "Whitespace", Pattern: `[ \t]+`}, // Only tabs and spaces
+		{Name: "Newline", Pattern: `\r?\n`},
+		{Name: "Whitespace", Pattern: `[ \t]+`},
 	},
 })
 
 type Program struct {
-	Sections []*Section `Newline* @@* Newline*` // Allow wrapping newlines
+	Sections []*Section `Newline* ( @@ Newline* )*`
 }
 
 type Section struct {
-	Name       string       `"[" @String "]" Newline*`
-	Entries    []*Entry     `( @@ Newline* )*` // Allow newlines between entries
+	// Participle will match the String token and check its unquoted value.
+	// Since we use Lookahead(5), it will peek inside to see if it's "jam", etc.
+	Friends *CircleOfFriendsSection `@@`
+	Albums  *AlbumsSection          `| @@`
+	Jam     *JamSection             `| @@`
+}
+
+type CircleOfFriendsSection struct {
+	Name    string   `"[" @"circle of friends" "]" Newline*`
+	Entries []*Entry `( @@ Newline* )*`
+}
+
+type AlbumsSection struct {
+	Name    string   `"[" @"albums" "]" Newline*`
+	Entries []*Entry `( @@ Newline* )*`
+}
+
+type JamSection struct {
+	Name       string       `"[" @"jam" "]" Newline*`
 	Statements []*Statement `( @@ Newline* )*`
 }
 
@@ -55,7 +72,7 @@ type Print struct {
 	Args []*Expression `"say" @@+`
 }
 type Conditional struct {
-	Condition *Expression  `"suppose" @@ Newline*` // Newline after condition
+	Condition *Expression  `"suppose" @@ Newline*`
 	Body      []*Statement `( @@ Newline* )*`
 	Otherwise []*Statement `( "otherwise" Newline* ( @@ Newline* )* )?`
 	End       string       `"enough"`

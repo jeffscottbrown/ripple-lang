@@ -20,7 +20,7 @@ func Compile(source string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse: %w", err)
 	}
-	return codegen.NewCompiler().Compile(prog)
+	return codegen.New().Compile(prog)
 }
 
 // Execute now takes a writer for stdout.

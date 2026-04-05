@@ -19,7 +19,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// Boolean variable must be stack-allocated and initialised to true (copacetic).
@@ -42,7 +42,7 @@ vibe becomes harsh`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// A boolean variable must be allocated on the stack.
@@ -60,7 +60,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// harshing_the_vibe_of must lower to icmp ne on i1 values.
@@ -83,7 +83,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// louder_than must lower to icmp sgt on i32 values.
@@ -106,7 +106,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// quieter_than must lower to icmp slt on i32 values.
@@ -124,7 +124,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// A conditional with an otherwise clause must emit the else basic block.
@@ -140,7 +140,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// The merge block must still appear for fall-through.
@@ -163,7 +163,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// has is resolved at compile time; "A" is present so the branch must be
@@ -185,7 +185,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// has is resolved at compile time; "Abbey Road" is absent so the branch
@@ -202,7 +202,7 @@ say jerry.name`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// The resolved string value must be present as a global constant.
@@ -225,7 +225,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// albumcount is resolved at compile time to the length of the list.
@@ -239,7 +239,7 @@ say "a" "b"`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// Two string arguments must produce a format string with two %s directives.
@@ -256,7 +256,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// and between two i1 values must lower to the LLVM and i1 instruction.
@@ -273,7 +273,7 @@ enough`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		ir, err := codegen.NewCompiler().Compile(prog)
+		ir, err := codegen.New().Compile(prog)
 		require.NoError(t, err)
 
 		// or between two i1 values must lower to the LLVM or i1 instruction.
@@ -289,7 +289,7 @@ jerry: { "Jerry" "Garcia" }`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		c := codegen.NewCompiler()
+		c := codegen.New()
 		_, err = c.Compile(prog)
 
 		assert.Error(t, err)
@@ -305,10 +305,10 @@ say jerry.height`
 
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
-		_, err = codegen.NewCompiler().Compile(prog)
+		_, err = codegen.New().Compile(prog)
 		assert.Error(t, err)
 		// Update to match: "artist 'jerry' does not have a property named 'height'"
-		assert.ErrorContains(t, err, "does not have a property named 'height'")
+		assert.ErrorContains(t, err, "artist does not have that property: height")
 	})
 
 	t.Run("Reject unrecorded artist", func(t *testing.T) {
@@ -318,7 +318,7 @@ say bob.name`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		_, err = codegen.NewCompiler().Compile(prog)
+		_, err = codegen.New().Compile(prog)
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "not in your circle of friends")
 	})
@@ -331,8 +331,8 @@ vibe becomes copacetic`
 		prog, err := parser.Parse(code)
 		require.NoError(t, err)
 
-		_, err = codegen.NewCompiler().Compile(prog)
+		_, err = codegen.New().Compile(prog)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "variable or artist 'vibe' is not defined")
+		assert.ErrorContains(t, err, "variable for artist is not defined: vibe")
 	})
 }
