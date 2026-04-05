@@ -49,31 +49,31 @@ There are three conventional sections, written in order:
 
 | Section | Purpose |
 |---|---|
-| `["circle of friends"]` | Declare named people |
-| `["albums"]` | Assign album collections to people |
-| `["jam"]` | The executable logic |
+| `[circle of friends]` | Declare named people |
+| `[albums]` | Assign album collections to people |
+| `[jam]` | The executable logic |
 
 ---
 
 ## Data Sections
 
-### `["circle of friends"]`
+### `[circle of friends]`
 
 Declare the people your program knows about. Each entry maps an identifier to a display name string.
 
 ```sh
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 grace: "Grace Slick"
 ```
 
-### `["albums"]`
+### `[albums]`
 
 Assign a collection of album titles to a person. Albums are listed inside `{ }`, one per line, as quoted strings.
 
 ```sh
-["albums"]
+[albums]
 jerry: {
     "Cats Under The Stars"
     "Blues For Allah"
@@ -92,7 +92,7 @@ grace: {
 
 ## The Jam Section
 
-`["jam"]` is where the program runs. It supports variable assignment, printing, and conditionals.
+`[jam]` is where the program runs. It supports variable assignment, printing, and conditionals.
 
 ### Printing — `say`
 
@@ -159,7 +159,7 @@ enough
 | `copacetic` | Boolean true |
 | `harsh` | Boolean false |
 | `"string literal"` | A double-quoted string |
-| `person.name` | The display name from `["circle of friends"]` |
+| `person.name` | The display name from `[circle of friends]` |
 | `person.albumcount` | The number of albums the person has |
 | `person.albums` | The album collection (used with the `has` operator) |
 
@@ -203,12 +203,12 @@ enough
 **`demo.ripple`**
 
 ```sh
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 grace: "Grace Slick"
 
-["albums"]
+[albums]
 jerry: {
     "Cats Under The Stars"
     "Blues For Allah"
@@ -222,7 +222,7 @@ grace: {
     "Surrealistic Pillow"
 }
 
-["jam"]
+[jam]
 suppose jerry.albumcount quieter_than 1
     snitch "Warning: Jerry has no albums recorded."
 enough

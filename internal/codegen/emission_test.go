@@ -11,7 +11,7 @@ import (
 
 func TestCompiler_Emission(t *testing.T) {
 	t.Run("Booleans and Logic", func(t *testing.T) {
-		code := `["jam"]
+		code := `[jam]
                  vibe becomes copacetic
                  suppose vibe vibes_like copacetic
                    say "Copacetic"
@@ -35,11 +35,11 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Compile Time Has Resolution", func(t *testing.T) {
-		code := `["circle of friends"]
+		code := `[circle of friends]
                  jerry: "Jerry"
-                 ["albums"]
+                 [albums]
                  jerry: { "Workingman's Dead" }
-                 ["jam"]
+                 [jam]
                  suppose jerry.albums has "Workingman's Dead"
                    say "Found it"
                  enough`
@@ -51,13 +51,13 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Numeric Comparisons", func(t *testing.T) {
-		code := `["circle of friends"]
+		code := `[circle of friends]
                  jerry: "Jerry"
                  janis: "Janis"
-                 ["albums"]
+                 [albums]
                  jerry: { "A" "B" }
                  janis: { "C" }
-                 ["jam"]
+                 [jam]
                  suppose jerry.albumcount louder_than janis.albumcount
                    say "Jerry wins"
                  enough`
@@ -69,7 +69,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Multi-Argument Output", func(t *testing.T) {
-		code := `["jam"]
+		code := `[jam]
                  say "One" "Two" "Three"`
 		ir := compileOrFatal(t, code)
 
@@ -79,9 +79,9 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Attributes and Identifiers", func(t *testing.T) {
-		code := `["circle of friends"]
+		code := `[circle of friends]
                  jerry: "Jerry Garcia"
-                 ["jam"]
+                 [jam]
                  say jerry.name`
 		ir := compileOrFatal(t, code)
 
@@ -92,7 +92,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("And Operator", func(t *testing.T) {
-		code := `["jam"]
+		code := `[jam]
                  a becomes copacetic
                  b becomes copacetic
                  suppose a and b

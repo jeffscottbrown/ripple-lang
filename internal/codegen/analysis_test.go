@@ -18,21 +18,21 @@ func TestCompiler_Analysis(t *testing.T) {
 	}{
 		{
 			name: "Unknown Artist",
-			code: `["jam"]
+			code: `[jam]
                    say bob.name`,
 			contains: "artist is not in your circle of friends",
 		},
 		{
 			name: "Invalid Property",
-			code: `["circle of friends"]
+			code: `[circle of friends]
                    jerry: "Jerry"
-                   ["jam"]
+                   [jam]
                    say jerry.height`,
 			contains: "artist does not have that property",
 		},
 		{
 			name: "Undefined Variable",
-			code: `["jam"]
+			code: `[jam]
                    suppose is_cool
                    say "yes"
                    enough`,
@@ -40,16 +40,16 @@ func TestCompiler_Analysis(t *testing.T) {
 		},
 		{
 			name: "Usage Before Assignment",
-			code: `["jam"]
+			code: `[jam]
                    say vibe
                    vibe becomes copacetic`,
 			contains: "variable or artist not defined: vibe",
 		},
 		{
 			name: "Duplicate Section",
-			code: `["jam"]
+			code: `[jam]
                    say "hi"
-                   ["jam"]
+                   [jam]
                    say "bye"`,
 			contains: "duplicate section: [jam]",
 		},

@@ -9,6 +9,7 @@ var ripleLexer = lexer.MustStateful(lexer.Rules{
 	"Root": {
 		{Name: "Comment", Pattern: `#[^\n\r]*`},
 		{Name: "String", Pattern: `"[^"]*"`},
+		{Name: "BracketPhrase", Pattern: `\[[a-zA-Z_][a-zA-Z0-9_]*(?:\s+[a-zA-Z_][a-zA-Z0-9_]*)*\]`},
 		{Name: "Punct", Pattern: `[[\]{}.:]`},
 		{Name: "Keyword", Pattern: `(?:becomes|suppose|say|snitch|otherwise|enough|harshing_the_vibe_of|copacetic|harsh|vibes_like|louder_than|quieter_than|has|and|or)\b`},
 		{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
@@ -30,12 +31,13 @@ type Section struct {
 }
 
 type CircleOfFriendsSection struct {
-	Name    string         `"[" @"circle of friends" "]" Newline*`
+	Name FriendsPhrase `@BracketPhrase Newline*`
+	// Name    string         `"[" @"circle of friends" "]" Newline*`
 	Entries []*FriendEntry `( @@ Newline* )*`
 }
 
 type AlbumsSection struct {
-	Name    string        `"[" @"albums" "]" Newline*`
+	Name    AlbumsPhrase  `@BracketPhrase Newline*`
 	Entries []*AlbumEntry `( @@ Newline* )*`
 }
 
@@ -52,7 +54,7 @@ type AlbumEntry struct {
 }
 
 type JamSection struct {
-	Name       string       `"[" @"jam" "]" Newline*`
+	Name       JamPhrase    `@BracketPhrase Newline*`
 	Statements []*Statement `( @@ Newline* )*`
 }
 

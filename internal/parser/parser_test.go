@@ -9,9 +9,9 @@ import (
 )
 
 func TestParse_ThreeSections(t *testing.T) {
-	code := `["circle of friends"]
-["albums"]
-["jam"]`
+	code := `[circle of friends]
+[albums]
+[jam]`
 
 	prog, err := parser.Parse(code)
 	require.NoError(t, err)
@@ -19,17 +19,17 @@ func TestParse_ThreeSections(t *testing.T) {
 
 	// Check typed sections instead of a generic Name field
 	assert.NotNil(t, prog.Sections[0].Friends)
-	assert.Equal(t, "circle of friends", prog.Sections[0].Friends.Name)
+	assert.Equal(t, "circle of friends", string(prog.Sections[0].Friends.Name))
 
 	assert.NotNil(t, prog.Sections[1].Albums)
-	assert.Equal(t, "albums", prog.Sections[1].Albums.Name)
+	assert.Equal(t, "albums", string(prog.Sections[1].Albums.Name))
 
 	assert.NotNil(t, prog.Sections[2].Jam)
-	assert.Equal(t, "jam", prog.Sections[2].Jam.Name)
+	assert.Equal(t, "jam", string(prog.Sections[2].Jam.Name))
 }
 
 func TestParse_Entry_SimpleValue(t *testing.T) {
-	code := `["circle of friends"]
+	code := `[circle of friends]
 jerry: "Jerry Garcia"`
 
 	prog, err := parser.Parse(code)
@@ -46,7 +46,7 @@ jerry: "Jerry Garcia"`
 }
 
 func TestParse_Entry_Collection(t *testing.T) {
-	code := `["albums"]
+	code := `[albums]
 jerry: { "A" "B" "C" }`
 
 	prog, err := parser.Parse(code)
@@ -63,7 +63,7 @@ jerry: { "A" "B" "C" }`
 }
 
 func TestParse_Statement_Assignment_Copacetic(t *testing.T) {
-	code := `["jam"]
+	code := `[jam]
 vibe becomes copacetic`
 
 	prog, err := parser.Parse(code)
@@ -80,13 +80,13 @@ vibe becomes copacetic`
 }
 
 func TestParse_ComplexProgram(t *testing.T) {
-	code := `["circle of friends"]
+	code := `[circle of friends]
 jerry: "Jerry Garcia"
 
-["albums"]
+[albums]
 jerry: { "American Beauty" }
 
-["jam"]
+[jam]
 say "hello"`
 
 	prog, err := parser.Parse(code)

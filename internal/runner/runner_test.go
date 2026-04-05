@@ -31,7 +31,7 @@ func skipIfNoClang(t *testing.T) {
 // a single jam section containing one say statement with a string literal.
 //
 // Language features demonstrated:
-//   - ["jam"] section header syntax
+//   - [jam] section header syntax
 //   - say statement with a double-quoted string literal
 //   - runner.Execute returns the captured stdout including the trailing newline
 func TestExecute_Say_StringLiteral(t *testing.T) {
@@ -39,7 +39,7 @@ func TestExecute_Say_StringLiteral(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 say "hello world"
 `
 	var out bytes.Buffer
@@ -62,7 +62,7 @@ func TestExecute_Assignment_Copacetic_TrueBranch(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 vibe becomes copacetic
 suppose vibe vibes_like copacetic
     say "it is golden"
@@ -87,7 +87,7 @@ func TestExecute_Assignment_Harsh_FalseBranch(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 vibe becomes harsh
 suppose vibe vibes_like copacetic
     say "should not print"
@@ -113,7 +113,7 @@ func TestExecute_HarshingTheVibeOf_NotEqual(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 vibe becomes copacetic
 suppose vibe harshing_the_vibe_of harsh
     say "vibe is not muddy"
@@ -138,7 +138,7 @@ func TestExecute_Otherwise_TrueBranch(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 vibe becomes copacetic
 suppose vibe vibes_like copacetic
     say "golden branch"
@@ -164,7 +164,7 @@ func TestExecute_Otherwise_FalseBranch(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 vibe becomes harsh
 suppose vibe vibes_like copacetic
     say "golden branch"
@@ -183,8 +183,8 @@ enough
 // so jerry.albumcount louder_than janis.albumcount is true.
 //
 // Language features demonstrated:
-//   - ["circle of friends"] section with "Key: Display Name" entries
-//   - ["albums"] section with "key: { title title … }" collection entries
+//   - [circle of friends] section with "Key: Display Name" entries
+//   - [albums] section with "key: { title title … }" collection entries
 //   - '.albumcount' attribute resolves to the number of albums at compile time
 //   - 'louder_than' keyword as the greater-than (>) operator
 func TestExecute_LouderThan_AlbumCount(t *testing.T) {
@@ -192,15 +192,15 @@ func TestExecute_LouderThan_AlbumCount(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 janis: { "Kozmic Blues" "Pearl" }
 
-["jam"]
+[jam]
 suppose jerry.albumcount louder_than janis.albumcount
     say "Jerry has more albums"
 enough
@@ -224,15 +224,15 @@ func TestExecute_QuieterThan_AlbumCount(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 janis: { "Kozmic Blues" "Pearl" }
 
-["jam"]
+[jam]
 suppose janis.albumcount quieter_than jerry.albumcount
     say "Janis has fewer albums"
 enough
@@ -256,13 +256,13 @@ func TestExecute_Has_Present(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 
-["jam"]
+[jam]
 suppose jerry.albums has "American Beauty"
     say "Found American Beauty"
 enough
@@ -286,13 +286,13 @@ func TestExecute_Has_Absent(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 
-["jam"]
+[jam]
 suppose jerry.albums has "Dark Side"
     say "Found it"
 otherwise
@@ -309,7 +309,7 @@ enough
 // resolves to the display name declared in the "circle of friends" section.
 //
 // Language features demonstrated:
-//   - ["circle of friends"] section mapping short keys to full display names
+//   - [circle of friends] section mapping short keys to full display names
 //   - 'person.name' attribute access in a say statement
 //   - name string is interned as an LLVM global and passed to printf at runtime
 func TestExecute_NameResolution(t *testing.T) {
@@ -317,10 +317,10 @@ func TestExecute_NameResolution(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 
-["jam"]
+[jam]
 say jerry.name
 `
 	var out bytes.Buffer
@@ -345,10 +345,10 @@ func TestExecute_MultipleArgs_SameLine(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 
-["jam"]
+[jam]
 say "Hello, " jerry.name "!"
 `
 	var out bytes.Buffer
@@ -372,15 +372,15 @@ func TestExecute_Variable_From_Comparison(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 janis: { "Kozmic Blues" "Pearl" }
 
-["jam"]
+[jam]
 x becomes jerry.albumcount louder_than janis.albumcount
 suppose x vibes_like copacetic
     say "jerry wins"
@@ -398,16 +398,16 @@ enough
 //
 // Program sections:
 //
-//	["circle of friends"]
+//	[circle of friends]
 //	  Declares two artists — jerry (3 albums) and janis (2 albums) — with
 //	  their full display names. These are used in name resolution and album
 //	  count comparisons throughout the jam section.
 //
-//	["albums"]
+//	[albums]
 //	  Assigns literal title collections to each artist. The compiler uses
 //	  these at compile time to resolve albumcount and has expressions.
 //
-//	["jam"] — statement blocks, each testing a different language feature:
+//	[jam] — statement blocks, each testing a different language feature:
 //
 //	  Block 1 — plain say:
 //	    Prints a report header. Demonstrates the simplest say statement.
@@ -450,15 +450,15 @@ func TestExecute_CompleteProgram(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
-["albums"]
+[albums]
 jerry: { "Workingman's Dead" "American Beauty" "Europe 72" }
 janis: { "Kozmic Blues" "Pearl" }
 
-["jam"]
+[jam]
 say "--- Ripple Report ---"
 
 suppose jerry.albumcount louder_than janis.albumcount
@@ -516,7 +516,7 @@ func TestExecute_And_BothTrue(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 a becomes copacetic
 b becomes copacetic
 suppose a and b
@@ -543,7 +543,7 @@ func TestExecute_Or_OneFalse(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 a becomes harsh
 b becomes copacetic
 suppose a or b
@@ -570,7 +570,7 @@ func TestExecute_And_OneFalse(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 a becomes harsh
 b becomes copacetic
 suppose a and b
@@ -588,7 +588,7 @@ func TestExecute_Comments(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-["jam"]
+[jam]
 a becomes harsh
 # a becomes copacetic
 # b becomes harsh

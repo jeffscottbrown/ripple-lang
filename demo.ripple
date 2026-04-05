@@ -1,9 +1,9 @@
-["circle of friends"]
+[circle of friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 grace: "Grace Slick"
 
-["albums"]
+[albums]
 jerry: {
 	"Cats Under The Stars"
 	"Blues For Allah"
@@ -17,7 +17,7 @@ grace: {
 	"Surrealistic Pillow"
 }
 
-["jam"]
+[jam]
 suppose jerry.albumcount louder_than janis.albumcount
     say jerry.name " has more albums than " janis.name
 otherwise

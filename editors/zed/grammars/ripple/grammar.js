@@ -11,15 +11,15 @@
  *
  * Three conventional sections are defined by the standard runtime:
  *
- *   ["circle of friends"]
+ *   [circle of friends]
  *       Key/value entries that map identifier keys to display-name strings.
  *       e.g.   jerry: "Jerry Garcia"
  *
- *   ["albums"]
+ *   [albums]
  *       Key/collection entries that map identifier keys to sets of strings.
  *       e.g.   jerry: { "Cats Under The Stars"  "Blues For Allah" }
  *
- *   ["jam"]
+ *   [jam]
  *       Executable statements — assignments, conditionals, and print calls.
  *       e.g.   suppose jerry.albumcount louder_than janis.albumcount
  *                  say jerry.name " has more albums than " janis.name
@@ -106,7 +106,7 @@ module.exports = grammar({
         repeat(choice($.entry, $.statement)),
       ),
 
-    /** "[" string_literal "]"  —  e.g.  ["circle of friends"] */
+    /** "[" string_literal "]"  —  e.g.  [circle of friends] */
     section_header: ($) => seq("[", field("name", $.string_literal), "]"),
 
     // ── Entries ───────────────────────────────────────────────────────────────

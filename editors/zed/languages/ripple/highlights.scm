@@ -1,5 +1,5 @@
 ; ── Section headers ──────────────────────────────────────────────────────────
-; ["circle of friends"]  sections are the top-level structural unit.
+; [circle of friends]  sections are the top-level structural unit.
 ; Highlight the bracketed name like a module/namespace.
 
 (section_header "[" @punctuation.bracket)
