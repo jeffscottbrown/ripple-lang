@@ -276,8 +276,6 @@ ripple-lang/
 ├── cmd/
 │   └── ripple/
 │       └── main.go          # Entry point
-├── editors/
-│   └── zed/                 # Zed editor extension (see below)
 ├── internal/
 │   ├── ast/
 │   │   └── grammar.go       # AST node types and participle grammar
@@ -309,16 +307,6 @@ make test-race     # run tests with the race detector
 make vet           # run go vet
 make fmt           # format all Go source files
 ```
-
----
-
-## Zed Editor Support
-
-The `editors/zed/` directory contains a first-class Zed extension for Ripple.
-
-- **Syntax highlighting** — sections, keywords, operators, string literals, booleans, attribute access, and collection delimiters.
-- **Bracket matching & auto-close** — `[…]`, `{…}`, and `"…"`
-- **Auto-indent** — inside `suppose … enough` blocks
 
 ---
 
