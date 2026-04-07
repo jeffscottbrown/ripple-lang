@@ -23,20 +23,26 @@ type Program struct {
 }
 
 type Section struct {
-	// Participle will match the String token and check its unquoted value.
-	// Since we use Lookahead(5), it will peek inside to see if it's "jam", etc.
+	Pos     lexer.Position
 	Friends *CircleOfFriendsSection `@@`
 	Albums  *AlbumsSection          `| @@`
 	Jam     *JamSection             `| @@`
 }
 
+type JamSection struct {
+	Pos        lexer.Position
+	Name       JamPhrase    `@BracketPhrase Newline*`
+	Statements []*Statement `( @@ Newline* )*`
+}
+
 type CircleOfFriendsSection struct {
-	Name FriendsPhrase `@BracketPhrase Newline*`
-	// Name    string         `"[" @"circle of friends" "]" Newline*`
+	Pos     lexer.Position
+	Name    FriendsPhrase  `@BracketPhrase Newline*`
 	Entries []*FriendEntry `( @@ Newline* )*`
 }
 
 type AlbumsSection struct {
+	Pos     lexer.Position
 	Name    AlbumsPhrase  `@BracketPhrase Newline*`
 	Entries []*AlbumEntry `( @@ Newline* )*`
 }
@@ -53,14 +59,8 @@ type AlbumEntry struct {
 	Collection []string `"{" Newline* @String* (Newline* @String)* Newline* "}"`
 }
 
-type JamSection struct {
-	Name       JamPhrase    `@BracketPhrase Newline*`
-	Statements []*Statement `( @@ Newline* )*`
-}
-
 type Statement struct {
-	// Revert to simple @@ tags.
-	// We will use UseLookahead(5) in MustBuild to handle the ambiguity.
+	Pos         lexer.Position
 	Assignment  *Assignment  `  @@`
 	Conditional *Conditional `| @@`
 	Print       *Print       `| @@`
@@ -68,19 +68,23 @@ type Statement struct {
 }
 
 type Assignment struct {
+	Pos    lexer.Position
 	Target string      `@Ident "becomes"`
 	Value  *Expression `@@`
 }
 
 type Snitch struct {
+	Pos  lexer.Position
 	Args []*Expression `"snitch" @@+`
 }
 
 type Print struct {
+	Pos  lexer.Position
 	Args []*Expression `"say" @@+`
 }
 
 type Conditional struct {
+	Pos       lexer.Position
 	Condition *Expression  `"suppose" @@ Newline*`
 	Body      []*Statement `( @@ Newline* )*`
 	Otherwise []*Statement `( "otherwise" Newline* ( @@ Newline* )* )?`
@@ -88,6 +92,7 @@ type Conditional struct {
 }
 
 type Expression struct {
+	Pos   lexer.Position
 	Left  *Term  `@@`
 	Op    string `[ @( "louder_than" | "quieter_than" | "vibes_like" | "harshing_the_vibe_of" | "has" | "and" | "or" )`
 	Right *Term  `  @@ ]`
