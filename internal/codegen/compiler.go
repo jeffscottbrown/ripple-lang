@@ -16,7 +16,7 @@ import (
 var (
 	ErrDuplicateSection = errors.New("duplicate section")
 	ErrUndefined        = errors.New("variable or artist not defined")
-	ErrUnknownArtist    = errors.New("artist is not in your circle of friends")
+	ErrUnknownArtist    = errors.New("artist is not in your friends")
 	ErrInvalidProperty  = errors.New("artist does not have that property")
 )
 
@@ -105,7 +105,7 @@ func (c *Compiler) collectData(prog *ast.Program) error {
 		var name string
 		switch {
 		case sec.Friends != nil:
-			name = "circle of friends"
+			name = "friends"
 			if seen[name] {
 				return fmt.Errorf("%w: [%s]", ErrDuplicateSection, name)
 			}

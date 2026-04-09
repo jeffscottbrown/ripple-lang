@@ -49,7 +49,7 @@ There are three conventional sections, written in order:
 
 | Section | Purpose |
 |---|---|
-| `[circle of friends]` | Declare named people |
+| `[friends]` | Declare named people |
 | `[albums]` | Assign album collections to people |
 | `[jam]` | The executable logic |
 
@@ -57,12 +57,12 @@ There are three conventional sections, written in order:
 
 ## Data Sections
 
-### `[circle of friends]`
+### `[friends]`
 
 Declare the people your program knows about. Each entry maps an identifier to a display name string.
 
 ```sh
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 grace: "Grace Slick"
@@ -159,7 +159,7 @@ enough
 | `copacetic` | Boolean true |
 | `harsh` | Boolean false |
 | `"string literal"` | A double-quoted string |
-| `person.name` | The display name from `[circle of friends]` |
+| `person.name` | The display name from `[friends]` |
 | `person.albumcount` | The number of albums the person has |
 | `person.albums` | The album collection (used with the `has` operator) |
 
@@ -203,7 +203,7 @@ enough
 **`demo.ripple`**
 
 ```sh
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 grace: "Grace Slick"

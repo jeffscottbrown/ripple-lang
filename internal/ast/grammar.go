@@ -24,9 +24,9 @@ type Program struct {
 
 type Section struct {
 	Pos     lexer.Position
-	Friends *CircleOfFriendsSection `@@`
-	Albums  *AlbumsSection          `| @@`
-	Jam     *JamSection             `| @@`
+	Friends *FriendsSection `@@`
+	Albums  *AlbumsSection  `| @@`
+	Jam     *JamSection     `| @@`
 }
 
 type JamSection struct {
@@ -35,7 +35,7 @@ type JamSection struct {
 	Statements []*Statement `( @@ Newline* )*`
 }
 
-type CircleOfFriendsSection struct {
+type FriendsSection struct {
 	Pos     lexer.Position
 	Name    FriendsPhrase  `@BracketPhrase Newline*`
 	Entries []*FriendEntry `( @@ Newline* )*`

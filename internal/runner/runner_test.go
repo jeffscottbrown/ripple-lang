@@ -183,7 +183,7 @@ enough
 // so jerry.albumcount louder_than janis.albumcount is true.
 //
 // Language features demonstrated:
-//   - [circle of friends] section with "Key: Display Name" entries
+//   - [friends] section with "Key: Display Name" entries
 //   - [albums] section with "key: { title title … }" collection entries
 //   - '.albumcount' attribute resolves to the number of albums at compile time
 //   - 'louder_than' keyword as the greater-than (>) operator
@@ -192,7 +192,7 @@ func TestExecute_LouderThan_AlbumCount(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
@@ -224,7 +224,7 @@ func TestExecute_QuieterThan_AlbumCount(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
@@ -256,7 +256,7 @@ func TestExecute_Has_Present(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 
 [albums]
@@ -286,7 +286,7 @@ func TestExecute_Has_Absent(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 
 [albums]
@@ -306,10 +306,10 @@ enough
 }
 
 // TestExecute_NameResolution verifies that the '.name' attribute on a person
-// resolves to the display name declared in the "circle of friends" section.
+// resolves to the display name declared in the "friends" section.
 //
 // Language features demonstrated:
-//   - [circle of friends] section mapping short keys to full display names
+//   - [friends] section mapping short keys to full display names
 //   - 'person.name' attribute access in a say statement
 //   - name string is interned as an LLVM global and passed to printf at runtime
 func TestExecute_NameResolution(t *testing.T) {
@@ -317,7 +317,7 @@ func TestExecute_NameResolution(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 
 [jam]
@@ -345,7 +345,7 @@ func TestExecute_MultipleArgs_SameLine(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 
 [jam]
@@ -372,7 +372,7 @@ func TestExecute_Variable_From_Comparison(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 
@@ -398,7 +398,7 @@ enough
 //
 // Program sections:
 //
-//	[circle of friends]
+//	[friends]
 //	  Declares two artists — jerry (3 albums) and janis (2 albums) — with
 //	  their full display names. These are used in name resolution and album
 //	  count comparisons throughout the jam section.
@@ -450,7 +450,7 @@ func TestExecute_CompleteProgram(t *testing.T) {
 	skipIfNoClang(t)
 
 	src := `
-[circle of friends]
+[friends]
 jerry: "Jerry Garcia"
 janis: "Janis Joplin"
 

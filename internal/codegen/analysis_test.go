@@ -20,11 +20,11 @@ func TestCompiler_Analysis(t *testing.T) {
 			name: "Unknown Artist",
 			code: `[jam]
                    say bob.name`,
-			contains: "artist is not in your circle of friends",
+			contains: "artist is not in your friends",
 		},
 		{
 			name: "Invalid Property",
-			code: `[circle of friends]
+			code: `[friends]
                    jerry: "Jerry"
                    [jam]
                    say jerry.height`,

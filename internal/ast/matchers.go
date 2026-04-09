@@ -8,7 +8,7 @@ import (
 type FriendsPhrase string
 
 func (p *FriendsPhrase) Capture(values []string) error {
-	v, err := capturePhrase(values, "circle of friends")
+	v, err := capturePhrase(values, "friends")
 	if err != nil {
 		return err
 	}

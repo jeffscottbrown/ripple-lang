@@ -35,7 +35,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Compile Time Has Resolution", func(t *testing.T) {
-		code := `[circle of friends]
+		code := `[friends]
                  jerry: "Jerry"
                  [albums]
                  jerry: { "Workingman's Dead" }
@@ -51,7 +51,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Numeric Comparisons", func(t *testing.T) {
-		code := `[circle of friends]
+		code := `[friends]
                  jerry: "Jerry"
                  janis: "Janis"
                  [albums]
@@ -79,7 +79,7 @@ func TestCompiler_Emission(t *testing.T) {
 	})
 
 	t.Run("Attributes and Identifiers", func(t *testing.T) {
-		code := `[circle of friends]
+		code := `[friends]
                  jerry: "Jerry Garcia"
                  [jam]
                  say jerry.name`

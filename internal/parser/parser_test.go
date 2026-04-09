@@ -9,7 +9,7 @@ import (
 )
 
 func TestParse_ThreeSections(t *testing.T) {
-	code := `[circle of friends]
+	code := `[friends]
 [albums]
 [jam]`
 
@@ -19,7 +19,7 @@ func TestParse_ThreeSections(t *testing.T) {
 
 	// Check typed sections instead of a generic Name field
 	assert.NotNil(t, prog.Sections[0].Friends)
-	assert.Equal(t, "circle of friends", string(prog.Sections[0].Friends.Name))
+	assert.Equal(t, "friends", string(prog.Sections[0].Friends.Name))
 
 	assert.NotNil(t, prog.Sections[1].Albums)
 	assert.Equal(t, "albums", string(prog.Sections[1].Albums.Name))
@@ -29,7 +29,7 @@ func TestParse_ThreeSections(t *testing.T) {
 }
 
 func TestParse_Entry_SimpleValue(t *testing.T) {
-	code := `[circle of friends]
+	code := `[friends]
 jerry: "Jerry Garcia"`
 
 	prog, err := parser.Parse(code)
@@ -80,7 +80,7 @@ vibe becomes copacetic`
 }
 
 func TestParse_ComplexProgram(t *testing.T) {
-	code := `[circle of friends]
+	code := `[friends]
 jerry: "Jerry Garcia"
 
 [albums]
